@@ -349,7 +349,14 @@ class GrismDisperser(object):
         from .utils_numba import interp
 
         # Get dispersion parameters at the reference position
-        self.dx = self.conf.dxlam[self.beam]  # + xcenter #-xoffset
+        if isinstance(self.conf, grismconf.TransformGrismconf):
+            self.dx = self.conf.eval_dxlam(
+                x=(self.xc+self.xcenter-self.pad[1]),
+                y=(self.yc+self.ycenter-self.pad[0]),
+                beam=self.beam,
+            )
+        else:
+            self.dx = self.conf.dxlam[self.beam]  # + xcenter #-xoffset
         if self.grow > 1:
             self.dx = np.arange(self.dx[0]*self.grow, self.dx[-1]*self.grow)
 

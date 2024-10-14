@@ -1346,6 +1346,45 @@ class TransformGrismconf(object):
             wave *= 1.0e4
 
         return trace_dy, wave
+    
+    def eval_dxlam(self, x=1024, y=1024, beam="A", nt=512):
+
+        import os
+        from astropy.table import Table, Column
+
+        t = np.linspace(0, 1, nt)
+
+        x0 = np.squeeze(self.transform.reverse(x, y))
+
+        order = self.order_names[beam]
+        
+        # Define t from sensitivity
+        if self.conf.SENS is None:
+            _swave, _ssens = self.conf.SENS_data[order]
+            _swave = _swave[_ssens > min_sens*np.nanmax(_ssens)]  
+            _ssens = _ssens[_ssens > min_sens*np.nanmax(_ssens)]  
+            _dw = _swave.max() - _swave.min()
+            _wgrid = np.linspace(_swave.min()-0.02*_dw, _swave.max()+_dw*0.02, nt)
+            t = self.conf.INVDISPL(order, *self.transform.array_center, _wgrid)
+            
+        dx = self.conf.DISPX(order, *x0, t)
+        dy = self.conf.DISPY(order, *x0, t)
+        lam = self.conf.DISPL(order, *x0, t)
+
+        trace_axis = self.transform.trace_axis
+
+        if trace_axis == '+x':
+            xarr = 1*dx
+        elif trace_axis == '-x':
+            xarr = -1*dx
+        elif trace_axis == '+y':
+            xarr = 1*dy
+        elif trace_axis == '-y':
+            xarr = -1*dy
+
+        xarr = np.cast[int](np.round(xarr))
+
+        return np.arange(xarr.min(), xarr.max(), dtype=int)
 
     def get_beams(self, nt=512, min_sens=1.0e-3):
         """
