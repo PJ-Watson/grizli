@@ -763,6 +763,8 @@ def get_config_filename(
 
         conf_files = []
         conf_files.append(
+            os.path.join(GRIZLI_PATH, "CONF/NIRISS_{1}_{0}.V5.conf".format(grism, filter)))
+        conf_files.append(
             os.path.join(GRIZLI_PATH, "CONF/{0}.{1}.221215.conf".format(grism, filter))
         )
         conf_files.append(
@@ -926,7 +928,12 @@ class JwstDispersionTransform(object):
             self.base = None
 
         if conf_file is not None:
-            if "NIRISS" in conf_file:
+            if 'NIRISS' in conf_file and "V5" in conf_file:
+                # NP conf files, NIRISS_F200W_GR150R.V5
+                self.instrument = 'NIRISS'
+                self.grism = self.base.split(".")[0].split('_')[2][-1]
+                self.module = 'A'
+            elif "NIRISS" in conf_file:
                 # NIRISS_F200W_GR150R.conf
                 self.instrument = "NIRISS"
                 self.grism = self.base.split("_")[2][-1]
@@ -1527,6 +1534,9 @@ def load_grism_config(conf_file, warnings=True):
         conf = TransformGrismconf(conf_file)
         conf.get_beams()
     elif "specwcs" in conf_file:
+        conf = TransformGrismconf(conf_file)
+        conf.get_beams()
+    elif '.V5' in conf_file:
         conf = TransformGrismconf(conf_file)
         conf.get_beams()
     else:
