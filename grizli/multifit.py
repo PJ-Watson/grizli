@@ -348,7 +348,8 @@ def _compute_model(i, flt, fit_info, is_cgs, store, model_kwargs):
                 verbose=False,
                 **model_kwargs,
             )
-        except:
+        except Exception as e:
+            print (e)
             print("Failed: {0} {1}".format(flt.grism.parent_file, id))
             continue
 

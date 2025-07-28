@@ -1903,12 +1903,14 @@ def make_SEP_catalog_from_arrays(
     uJy_to_dn = 1 / (3631 * 1e6 * 10 ** (-0.4 * ZP))
 
     if sci.dtype != np.float32:
-        sci_data = sci.byteswap().newbyteorder()
+        # sci_data = sci.byteswap().newbyteorder()
+        sci_data = sci.view(sci.dtype.newbyteorder()).byteswap()
     else:
         sci_data = sci
 
     if err.dtype != np.float32:
-        err_data = err.byteswap().newbyteorder()
+        # err_data = err.byteswap().newbyteorder()
+        err_data = err.view(err.dtype.newbyteorder()).byteswap()
     else:
         err_data = err
 
@@ -2291,7 +2293,8 @@ def make_SEP_catalog(
             WEIGHT_TYPE = "VARIANCE"
 
     drz_im = pyfits.open(drz_file)
-    data = drz_im[0].data.byteswap().newbyteorder()
+    # data = drz_im[0].data.byteswap().newbyteorder()
+    data = drz_im[0].data.view(drz_im[0].data.dtype.newbyteorder()).byteswap()
 
     logstr = f"make_SEP_catalog: {drz_file} weight={weight_file} ({WEIGHT_TYPE})"
     utils.log_comment(utils.LOGFILE, logstr, verbose=verbose, show_date=True)
@@ -2328,7 +2331,8 @@ def make_SEP_catalog(
     need_err = (not use_bkg_err) | (not get_background)
     if (weight_file is not None) & need_err:
         wht_im = pyfits.open(weight_file)
-        wht_data = wht_im[0].data.byteswap().newbyteorder()
+        # wht_data = wht_im[0].data.byteswap().newbyteorder()
+        wht_data = wht_im[0].data.view(wht_im[0].data.dtype.newbyteorder()).byteswap()
 
         if WEIGHT_TYPE == "VARIANCE":
             err_data = np.sqrt(wht_data)
@@ -2969,7 +2973,7 @@ def compute_SEP_auto_params(
     segb = segmap
     if segmap is not None:
         if segmap.dtype == np.dtype(">i4"):
-            segb = segmap.byteswap().newbyteorder()
+            segb = segmap.view(segmap.dtype.newbyteorder("="))            
 
     if "a_image" in tab.colnames:
         x, y = tab["x_image"] - 1, tab["y_image"] - 1
@@ -7693,8 +7697,8 @@ def get_jwst_wfssbkg_file(
     if os.path.exists(local_bkg_file):
 
         h = pyfits.getheader(local_bkg_file, 0)
-        if "DATE" not in h:
-            msg = f"Use local wfssbkg file {local_bkg_file} (Warning: no DATE keyword)"
+        if ("DATE" not in h) or (bkg_file == "N/A" and ignoreNA):
+            msg = f"Use local wfssbkg file {local_bkg_file}"
             utils.log_comment(utils.LOGFILE, msg, verbose=verbose)
             return local_bkg_file
         elif h["DATE"] == pyfits.getval(bkg_file, "DATE", 0):

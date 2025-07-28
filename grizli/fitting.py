@@ -449,7 +449,7 @@ def run_all(
 
     if get_dict:
         frame = inspect.currentframe()
-        args = inspect.getargvalues(frame).locals
+        args = inspect.getargvalues(frame).locals.copy()
         for k in [
             "id",
             "get_dict",

@@ -24,6 +24,7 @@ QUIET_LEVEL = logging.INFO
 # CRDS_CONTEXT = 'jwst_0995.pmap' # 2022-10-06 NRC ZPs and flats
 # CRDS_CONTEXT = "jwst_1123.pmap"  # 2023-09-08 NRC specwcs, etc.
 CRDS_CONTEXT = "jwst_1293.pmap"  # 2024-09-25
+CRDS_CONTEXT = "jwst_1413.pmap"
 
 MAX_CTX_FOR_SKYFLATS = "jwst_1130.pmap"
 
@@ -502,7 +503,7 @@ def check_context_for_skyflats(verbose=True):
 
 
 def img_with_flat(
-    input,
+    input_file,
     verbose=True,
     overwrite=True,
     apply_photom=True,
@@ -514,7 +515,7 @@ def img_with_flat(
 
     Parameters
     ----------
-    input : str, `~astropy.io.fits.HDUList`
+    input_file : str, `~astropy.io.fits.HDUList`
         FITS filename of a JWST image or a previously-opened
         `~astropy.io.fits.HDUList` with SIP wcs information stored in the
         first extension.
@@ -555,10 +556,10 @@ def img_with_flat(
 
     _ = set_crds_context()
 
-    if not isinstance(input, pyfits.HDUList):
-        _hdu = pyfits.open(input)
+    if not isinstance(input_file, pyfits.HDUList):
+        _hdu = pyfits.open(input_file)
     else:
-        _hdu = input
+        _hdu = input_file
 
     skip = False
     if "S_FLAT" in _hdu[0].header:
@@ -591,7 +592,7 @@ def img_with_flat(
     if not skip:
 
         flat_step = FlatFieldStep()
-        _flatfile = flat_step.get_reference_file(img, "flat")
+        _flatfile = flat_step.get_reference_file(input_file, "flat")
         utils.log_comment(
             utils.LOGFILE,
             f"jwst.flatfield.FlatFieldStep: {_flatfile}",
@@ -615,7 +616,7 @@ def img_with_flat(
             photom_step = PhotomStep()
             with_phot = photom_step.process(with_flat)
             output = with_phot
-            _photfile = photom_step.get_reference_file(img, "photom")
+            _photfile = photom_step.get_reference_file(input_file, "photom")
             utils.log_comment(
                 utils.LOGFILE,
                 f"jwst.flatfield.PhotomStep: {_photfile}",
@@ -636,13 +637,13 @@ def img_with_flat(
 
         output = img
 
-    if isinstance(input, str) & overwrite:
-        output.write(input, overwrite=overwrite)
+    if isinstance(input_file, str) & overwrite:
+        output.write(input_file, overwrite=overwrite)
         _hdu.close()
 
         # Add reference files
         if not skip:
-            with pyfits.open(input, mode="update") as _hdu:
+            with pyfits.open(input_file, mode="update") as _hdu:
 
                 _hdu[0].header["UPDA_CTX"] = (
                     os.environ["CRDS_CONTEXT"],
@@ -663,7 +664,7 @@ def img_with_flat(
         )
 
         if use_skyflats & _needs_skyflat:
-            with pyfits.open(input, mode="update") as _hdu:
+            with pyfits.open(input_file, mode="update") as _hdu:
                 if "FIXFLAT" not in _hdu[0].header:
                     _sky = get_jwst_skyflat(_hdu[0].header)
                     if _sky[0] is not None:
@@ -699,12 +700,12 @@ def img_with_flat(
 
                 _flat_dq |= (5 * (_bad_flat)).astype(_flat_dq.dtype)
 
-                with pyfits.open(input, mode="update") as _hdu:
+                with pyfits.open(input_file, mode="update") as _hdu:
                     _hdu["DQ"].data |= _flat_dq.astype(_hdu["DQ"].data.dtype)
                     _hdu.flush()
 
         if mask_dq4_fraction is not None:
-            with pyfits.open(input, mode="update") as _hdu:
+            with pyfits.open(input_file, mode="update") as _hdu:
 
                 dq4 = _hdu["DQ"].data & 4
                 dq4_frac = (dq4 > 0).sum() / dq4.size
@@ -729,14 +730,14 @@ def img_with_flat(
 
 
 def img_with_wcs(
-    input, overwrite=True, fit_sip_header=True, skip_completed=True, verbose=True
+    input_file, overwrite=True, fit_sip_header=True, skip_completed=True, verbose=True
 ):
     """
     Open a JWST exposure and apply the distortion model.
 
     Parameters
     ----------
-    input : object
+    input_file : object
         Anything `jwst.datamodels.util.open` can accept for initialization.
 
     overwrite : bool
@@ -771,10 +772,10 @@ def img_with_wcs(
     # HDUList -> jwst.datamodels.ImageModel
 
     # Generate WCS as image
-    if not isinstance(input, pyfits.HDUList):
-        _hdu = pyfits.open(input)
+    if not isinstance(input_file, pyfits.HDUList):
+        _hdu = pyfits.open(input_file)
     else:
-        _hdu = input
+        _hdu = input_file
 
     if "OINSTRUM" not in _hdu[0].header:
         copy_jwst_keywords(_hdu[0].header)
@@ -801,7 +802,7 @@ def img_with_wcs(
 
     # AssignWcs to pupulate img.meta.wcsinfo
     step = AssignWcsStep()
-    _distor_file = step.get_reference_file(img, "distortion")
+    _distor_file = step.get_reference_file(input_file, "distortion")
     utils.log_comment(
         utils.LOGFILE,
         f"jwst.assign_wcs.AssignWcsStep: {_distor_file}",
@@ -814,10 +815,10 @@ def img_with_wcs(
     output = with_wcs
 
     # Write to a file
-    if isinstance(input, str) & overwrite:
-        output.write(input, overwrite=overwrite)
+    if isinstance(input_file, str) & overwrite:
+        output.write(input_file, overwrite=overwrite)
 
-        _hdu = pyfits.open(input)
+        _hdu = pyfits.open(input_file)
 
         if "GRIZLWCS" in _hdu[0].header:
             if (_hdu[0].header["GRIZLWCS"]) & (skip_completed):
@@ -865,7 +866,7 @@ def img_with_wcs(
             "Distortion reference file",
         )
 
-        _hdu.writeto(input, overwrite=True)
+        _hdu.writeto(input_file, overwrite=True)
         _hdu.close()
 
         if "CAL_VER" in _hdu[0].header:
@@ -877,7 +878,7 @@ def img_with_wcs(
         if DO_PURE_PARALLEL_WCS & _needs_fix:
             try:
                 # Update pointing of pure-parallel exposures
-                status = update_pure_parallel_wcs(input, fix_vtype="PARALLEL_PURE")
+                status = update_pure_parallel_wcs(input_file, fix_vtype="PARALLEL_PURE")
             except:
                 pass
 
@@ -950,14 +951,14 @@ def convert_cal_to_rate(cal_file, write=True, overwrite=True, verbose=True):
     return dm
 
 
-def match_gwcs_to_sip(input, step=64, transform=None, verbose=True, overwrite=True):
+def match_gwcs_to_sip(input_file, step=64, transform=None, verbose=True, overwrite=True):
     """
     Calculate transformation of gwcs to match SIP header, which may have been
     realigned (shift, rotation, scale)
 
     Parameters
     ----------
-    input : str, `~astropy.io.fits.HDUList`
+    input_file : str, `~astropy.io.fits.HDUList`
         FITS filename of a JWST image or a previously-opened
         `~astropy.io.fits.HDUList` with SIP wcs information stored in the
         first extension.
@@ -973,7 +974,7 @@ def match_gwcs_to_sip(input, step=64, transform=None, verbose=True, overwrite=Tr
         Verbose messages
 
     overwrite : bool
-        If True and ``input`` is a string, re-write to file
+        If True and ``input_file`` is a string, re-write to file
 
     Returns
     -------
@@ -994,10 +995,10 @@ def match_gwcs_to_sip(input, step=64, transform=None, verbose=True, overwrite=Tr
     if transform is None:
         transform = SimilarityTransform
 
-    if isinstance(input, str):
-        img = pyfits.open(input)
-    elif isinstance(input, pyfits.HDUList):
-        img = input
+    if isinstance(input_file, str):
+        img = pyfits.open(input_file)
+    elif isinstance(input_file, pyfits.HDUList):
+        img = input_file
 
     if img[0].header["TELESCOP"] not in ["JWST"]:
         img = set_jwst_to_hst_keywords(img, reset=True)
@@ -1088,13 +1089,13 @@ def match_gwcs_to_sip(input, step=64, transform=None, verbose=True, overwrite=Tr
     return obj
 
 
-def get_phot_keywords(input, verbose=True):
+def get_phot_keywords(input_file, verbose=True):
     """
     Calculate conversions between JWST ``MJy/sr`` units and PHOTFLAM/PHOTFNU
 
     Parameters
     ----------
-    input : str, `~astropy.io.fits.HDUList`
+    input_file : str, `~astropy.io.fits.HDUList`
         FITS filename of a `cal`ibrated JWST image or a previously-opened
         `~astropy.io.fits.HDUList`
 
@@ -1108,10 +1109,10 @@ def get_phot_keywords(input, verbose=True):
     """
     import astropy.units as u
 
-    if isinstance(input, str):
-        img = pyfits.open(input, mode="update")
-    elif isinstance(input, pyfits.HDUList):
-        img = input
+    if isinstance(input_file, str):
+        img = pyfits.open(input_file, mode="update")
+    elif isinstance(input_file, pyfits.HDUList):
+        img = input_file
 
     # Get tabulated filter info
     filter_info = get_jwst_filter_info(img[0].header)
@@ -1185,9 +1186,9 @@ def get_phot_keywords(input, verbose=True):
 
     img["SCI"].header["BUNIT"] = "ELECTRONS/S"
 
-    # Write FITS file if filename provided as input
-    if isinstance(input, str):
-        img.writeto(input, overwrite=True)
+    # Write FITS file if filename provided as input_file
+    if isinstance(input_file, str):
+        img.writeto(input_file, overwrite=True)
         img.close()
 
     info = {
@@ -1406,7 +1407,7 @@ def exposure_oneoverf_correction(
         else:
             erode_mask = True
 
-    dq = utils.mod_dq_bits(im["DQ"].data, okbits=4)
+    dq = utils.mod_dq_bits(im["DQ"].data.astype(int), okbits=4)
     dqmask = dq == 0
     mask = dqmask
 
@@ -1622,7 +1623,7 @@ def initialize_jwst_image(
         raise ValueError(msg)
 
     # if img['SCI'].header['BUNIT'].upper() == 'DN/S':
-    #     gain_file = GainScaleStep().get_reference_file(img, 'gain')
+    #     gain_file = GainScaleStep().get_reference_file(input_file, 'gain')
     #
     #     with pyfits.open(gain_file) as gain_im:
     #         gain_median = np.median(gain_im[1].data)
@@ -1669,7 +1670,7 @@ def initialize_jwst_image(
             img[0].header[k] = targ
 
     # Get flat field ref file
-    _flatfile = FlatFieldStep().get_reference_file(img, "flat")
+    _flatfile = FlatFieldStep().get_reference_file(filename, "flat")
     img[0].header["PFLTFILE"] = os.path.basename(_flatfile)
     msg = f"PFLTFILE = {_flatfile}"
     utils.log_comment(utils.LOGFILE, msg, verbose=verbose)
@@ -1895,14 +1896,14 @@ def initialize_jwst_image(
 
 
 def set_jwst_to_hst_keywords(
-    input, reset=False, verbose=True, orig_keys=ORIG_KEYS, oneoverf_correction=True
+    input_file, reset=False, verbose=True, orig_keys=ORIG_KEYS, oneoverf_correction=True
 ):
     """
     Make primary header look like an HST instrument
 
     Parameters
     ----------
-    input : str, `~astropy.io.fits.HDUList`
+    input_file : str, `~astropy.io.fits.HDUList`
         Filename or FITS HDUList object to modify.
 
     reset : bool
@@ -1930,23 +1931,23 @@ def set_jwst_to_hst_keywords(
 
     import astropy.io.fits as pyfits
 
-    if isinstance(input, str):
-        img = pyfits.open(input)
+    if isinstance(input_file, str):
+        img = pyfits.open(input_file)
     else:
-        img = input
+        img = input_file
 
     HST_KEYS = {"TELESCOP": "HST", "INSTRUME": "WFC3", "DETECTOR": "IR"}
 
     if "OTELESCO" not in img[0].header:
         _status = initialize_jwst_image(
-            input, oneoverf_correction=oneoverf_correction, verbose=verbose
+            input_file, oneoverf_correction=oneoverf_correction, verbose=verbose
         )
 
         # Reopen
-        if isinstance(input, str):
-            img = pyfits.open(input, mode="update")
+        if isinstance(input_file, str):
+            img = pyfits.open(input_file, mode="update")
         else:
-            img = input
+            img = input_file
 
     if reset:
         for k in orig_keys:
@@ -1974,8 +1975,8 @@ def set_jwst_to_hst_keywords(
     if "TIME" in img:
         img["TIME"].header["PIXVALUE"] = img[0].header["EXPTIME"]
 
-    if isinstance(input, str):
-        img.writeto(input, overwrite=True)
+    if isinstance(input_file, str):
+        img.writeto(input_file, overwrite=True)
 
     return img
 
@@ -3119,7 +3120,7 @@ def get_jwst_filter_info(header):
     return info
 
 
-def calc_jwst_filter_info(context="jwst_1130.pmap"):
+def calc_jwst_filter_info(context="jwst_1413.pmap"):
     """
     Calculate JWST filter properties from tabulated `eazy` filter file and
     photom reference files
@@ -3307,7 +3308,8 @@ def get_crds_zeropoint(
     filter="F444W",
     pupil="CLEAR",
     date=None,
-    context="jwst_0989.pmap",
+    # context="jwst_0989.pmap",
+    context="jwst_1413.pmap",
     verbose=False,
     **kwargs,
 ):
@@ -4519,7 +4521,7 @@ def get_nirspec_persistence_mask(
 
     with pyfits.open(file) as im:
         # DQ mask
-        valid_dq = utils.mod_dq_bits(im["DQ"].data, ok_bits) == 0
+        valid_dq = utils.mod_dq_bits(im['DQ'].data.astype(int), ok_bits) == 0
 
         # Median RNOISE
         med_rnoise = np.nanmedian(im["VAR_RNOISE"].data[valid_dq])

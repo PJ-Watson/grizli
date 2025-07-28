@@ -7253,7 +7253,7 @@ def get_photom_scale(header, verbose=True):
         return key, 1.0 / corr[key]
 
 
-def jwst_crds_photom_scale(hdul, context="jwst_1293.pmap", scale_internal=True, update=True, verbose=False):
+def jwst_crds_photom_scale(hdul, context="jwst_1413.pmap", scale_internal=True, update=True, verbose=False):
     """
     Scale factors between different JWST CRDS_CONTEXT
 
@@ -7530,7 +7530,8 @@ def drizzle_from_visit(
     verbose=True,
     scale_photom=True,
     internal_nircam_zeropoints=True,
-    context="jwst_1293.pmap",
+    # context="jwst_1293.pmap",
+    context="jwst_1413.pmap",
     weight_type="jwst_var",
     rnoise_percentile=99,
     calc_wcsmap=False,
@@ -12578,10 +12579,11 @@ def log_function_arguments(LOGFILE, frame, func="func", ignore=[], verbose=True)
 
     """
     args = inspect.getargvalues(frame).locals
-    args.pop("frame")
+    # args.pop("frame")
     for k in list(args.keys()):
         if hasattr(args[k], "__builtins__"):
-            args.pop(k)
+            # args.pop(k)
+            pass
 
     for k in ignore:
         if k in args:

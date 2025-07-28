@@ -9,11 +9,13 @@ import os
 from collections import OrderedDict
 
 import numpy as np
+import os
+from astropy.table import Table, Column
 
 from . import GRIZLI_PATH, utils
 from .jwst_utils import crds_reffiles
 
-DEFAULT_CRDS_CONTEXT = "jwst_1123.pmap"
+DEFAULT_CRDS_CONTEXT = "jwst_1413.pmap"
 
 NIRCAM_CONF_VERSION = "V8.5"
 
@@ -764,10 +766,11 @@ def get_config_filename(
 
     if instrume == "NIRISS":
 
-        conf_files = []
+        conf_files = []        
         conf_files.append(
-            os.path.join(GRIZLI_PATH, "CONF/{0}.{1}.221215.conf".format(grism, filter))
-        )
+            os.path.join(GRIZLI_PATH, "CONF/NIRISS_{1}_{0}.V5.conf".format(grism, filter)))
+        conf_files.append(os.path.join(GRIZLI_PATH,
+                            'CONF/{0}.{1}.221215.conf'.format(grism, filter)))
         conf_files.append(
             os.path.join(GRIZLI_PATH, "CONF/{0}.{1}.220725.conf".format(grism, filter))
         )
@@ -928,8 +931,13 @@ class JwstDispersionTransform(object):
         else:
             self.base = None
 
-        if conf_file is not None:
-            if "NIRISS" in conf_file:
+        if conf_file is not None:            
+            if 'NIRISS' in conf_file and "V5" in conf_file:
+                # NP conf files, NIRISS_F200W_GR150R.V5
+                self.instrument = 'NIRISS'
+                self.grism = self.base.split(".")[0].split('_')[2][-1]
+                self.module = 'A'
+            elif "NIRISS" in conf_file:
                 # NIRISS_F200W_GR150R.conf
                 self.instrument = "NIRISS"
                 self.grism = self.base.split("_")[2][-1]
@@ -1336,6 +1344,35 @@ class TransformGrismconf(object):
         ):
             # print('V8: do nothing')
             pass
+        
+        # Testing alignment, need to check filter offset files
+        elif ('specwcs' in self.conf_file):
+            # print (self.conf_file, self.transform.trace_axis)
+            # print (self.conf.filter, self.conf.pupil)
+            #print('V8: do nothing')
+            if self.conf.pupil=="F115W":
+                # if "x" in self.conf_file:
+                if self.conf.filter=="GR150C":
+                    trace_dy += 1
+                # elif "y" in self.transform.trace_axis:
+                else:
+                    trace_dy -= 1
+            elif self.conf.pupil=="F150W":
+                # if "x" in self.conf_file:
+                if self.conf.filter=="GR150C":
+                    trace_dy += 1
+                # elif "y" in self.transform.trace_axis:
+                else:
+                    trace_dy -= 2
+            elif self.conf.pupil=="F200W":
+                # if "x" in self.conf_file:
+                if self.conf.filter=="GR150C":
+                    trace_dy += 1
+                # elif "y" in self.transform.trace_axis:
+                else:
+                    trace_dy -= 2
+            else:
+                pass
 
         elif os.path.basename(self.conf_file) == "NIRCAM_F444W_modA_R.conf":
             trace_dy += -2.5
@@ -1347,6 +1384,45 @@ class TransformGrismconf(object):
             wave *= 1.0e4
 
         return trace_dy, wave
+
+    def eval_dxlam(self, x=1024, y=1024, beam="A", nt=512, min_sens=1e-3):
+
+        t = np.linspace(0, 1, nt)
+
+        x0 = np.squeeze(self.transform.reverse(x, y))
+
+        order = self.order_names[beam]
+
+        # Define t from sensitivity
+        if self.conf.SENS is None:
+            _swave, _ssens = self.conf.SENS_data[order]
+            _swave = _swave[_ssens > min_sens*np.nanmax(_ssens)]  
+            _ssens = _ssens[_ssens > min_sens*np.nanmax(_ssens)]  
+            _dw = _swave.max() - _swave.min()
+            _wgrid = np.linspace(_swave.min()-0.02*_dw, _swave.max()+_dw*0.02, nt)
+            t = self.conf.INVDISPL(order, *self.transform.array_center, _wgrid)
+
+        dx = self.conf.DISPX(order, *x0, t)
+        dy = self.conf.DISPY(order, *x0, t)
+        lam = self.conf.DISPL(order, *x0, t)
+
+        trace_axis = self.transform.trace_axis
+
+        if trace_axis == '+x':
+            xarr = 1*dx
+        elif trace_axis == '-x':
+            xarr = -1*dx
+        elif trace_axis == '+y':
+            xarr = 1*dy
+        elif trace_axis == '-y':
+            xarr = -1*dy
+
+        # xarr = np.asarray(np.round(xarr), dtype=int))
+
+        # return np.arange(xarr.min(), xarr.max(), dtype=int)
+        return np.arange(int(round(np.min(xarr),0)),int(round(np.max(xarr),0)), dtype=int)
+
+
 
     def get_beams(self, nt=512, min_sens=1.0e-3):
         """
@@ -1535,6 +1611,9 @@ def load_grism_config(conf_file, warnings=True):
         conf = TransformGrismconf(conf_file)
         conf.get_beams()
     elif "specwcs" in conf_file:
+        conf = TransformGrismconf(conf_file)
+        conf.get_beams()        
+    elif '.V5' in conf_file:
         conf = TransformGrismconf(conf_file)
         conf.get_beams()
     else:

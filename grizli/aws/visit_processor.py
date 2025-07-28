@@ -2269,7 +2269,8 @@ def cutout_mosaic(rootname='gds', product='{rootname}-{f}', ra=53.1615666, dec=-
             _env_context = os.getenv("CRDS_CONTEXT")
             context = jwst_utils.CRDS_CONTEXT if _env_context is None else _env_context
         else:
-            context = "jwst_0989.pmap"
+            # context = "jwst_0989.pmap"
+            context="jwst_1413.pmap"
 
     utils.set_warnings()
 

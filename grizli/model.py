@@ -383,7 +383,15 @@ class GrismDisperser(object):
         from .utils_numba import interp
 
         # Get dispersion parameters at the reference position
-        self.dx = self.conf.dxlam[self.beam]  # + xcenter #-xoffset
+        # self.dx = self.conf.dxlam[self.beam]  # + xcenter #-xoffset
+        if isinstance(self.conf, grismconf.TransformGrismconf):
+            self.dx = self.conf.eval_dxlam(
+                x=(self.xc+self.xcenter-self.pad[1]),
+                y=(self.yc+self.ycenter-self.pad[0]),
+                beam=self.beam,
+            )
+        else:
+            self.dx = self.conf.dxlam[self.beam]  # + xcenter #-xoffset
         if self.grow > 1:
             self.dx = np.arange(self.dx[0] * self.grow, self.dx[-1] * self.grow)
 
@@ -455,7 +463,7 @@ class GrismDisperser(object):
         try:
             self.flat_index = self.idx[dyc + self.x0[0], self.dxpix]
         except IndexError:
-            # print('Index Error', id, dyc.dtype, self.dxpix.dtype, self.x0[0], self.xc, self.yc, self.beam, self.ytrace_beam.max(), self.ytrace_beam.min())
+            print('Index Error', id, dyc.dtype, self.dxpix.dtype, self.x0[0], self.xc, self.yc, self.beam, self.ytrace_beam.max(), self.ytrace_beam.min())
             raise IndexError
 
         # Trace, wavelength, sensitivity across entire 2D array
@@ -1671,6 +1679,7 @@ class ImageData(object):
                 ref_photflam = 1.0
                 ref_photplam = ref_h["PHOTPLAM"]
                 # ref_filter = ref_h['FILTER']
+                ref_filter = utils.parse_filter_from_header(ref_h, filter_only=True)
                 ref_filter = utils.parse_filter_from_header(ref_h)
 
             else:
@@ -3339,6 +3348,7 @@ class GrismFLT(object):
         get_beams=None,
         psf_params=None,
         verbose=True,
+        force_orders=False,
     ):
         """Compute dispersed spectrum for a given object id
 
@@ -3655,7 +3665,7 @@ class GrismFLT(object):
                 else:
                     beam.compute_model(spectrum_1d=old_spectrum_1d, is_cgs=old_cgs)
 
-        if get_beams:
+        if get_beams and (not force_orders):
             out_beams = OrderedDict()
             for b in beam_names:
                 out_beams[b] = beams[b]
