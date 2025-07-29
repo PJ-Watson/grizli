@@ -766,10 +766,12 @@ def get_config_filename(
 
     if instrume == "NIRISS":
 
-        conf_files = []        
-        conf_files.append(
-            os.path.join(GRIZLI_PATH, "CONF/NIRISS_{1}_{0}.V5.conf".format(grism, filter)))
-        conf_files.append(os.path.join(GRIZLI_PATH,
+        conf_files = []
+        if os.getenv("NIRISS_CALIB", "NGDEEP")=="NGDEEP":
+            conf_files.append(
+                os.path.join(GRIZLI_PATH, "CONF/NIRISS_{1}_{0}.V5.conf".format(grism, filter)))
+        else:
+            conf_files.append(os.path.join(GRIZLI_PATH,
                             'CONF/{0}.{1}.221215.conf'.format(grism, filter)))
         conf_files.append(
             os.path.join(GRIZLI_PATH, "CONF/{0}.{1}.220725.conf".format(grism, filter))
@@ -1345,34 +1347,34 @@ class TransformGrismconf(object):
             # print('V8: do nothing')
             pass
         
-        # Testing alignment, need to check filter offset files
-        elif ('specwcs' in self.conf_file):
-            # print (self.conf_file, self.transform.trace_axis)
-            # print (self.conf.filter, self.conf.pupil)
-            #print('V8: do nothing')
-            if self.conf.pupil=="F115W":
-                # if "x" in self.conf_file:
-                if self.conf.filter=="GR150C":
-                    trace_dy += 1
-                # elif "y" in self.transform.trace_axis:
-                else:
-                    trace_dy -= 1
-            elif self.conf.pupil=="F150W":
-                # if "x" in self.conf_file:
-                if self.conf.filter=="GR150C":
-                    trace_dy += 1
-                # elif "y" in self.transform.trace_axis:
-                else:
-                    trace_dy -= 2
-            elif self.conf.pupil=="F200W":
-                # if "x" in self.conf_file:
-                if self.conf.filter=="GR150C":
-                    trace_dy += 1
-                # elif "y" in self.transform.trace_axis:
-                else:
-                    trace_dy -= 2
-            else:
-                pass
+        # # Testing alignment, need to check filter offset files
+        # elif ('specwcs' in self.conf_file):
+        #     # print (self.conf_file, self.transform.trace_axis)
+        #     # print (self.conf.filter, self.conf.pupil)
+        #     #print('V8: do nothing')
+        #     if self.conf.pupil=="F115W":
+        #         # if "x" in self.conf_file:
+        #         if self.conf.filter=="GR150C":
+        #             trace_dy += 1
+        #         # elif "y" in self.transform.trace_axis:
+        #         else:
+        #             trace_dy -= 1
+        #     elif self.conf.pupil=="F150W":
+        #         # if "x" in self.conf_file:
+        #         if self.conf.filter=="GR150C":
+        #             trace_dy += 1
+        #         # elif "y" in self.transform.trace_axis:
+        #         else:
+        #             trace_dy -= 2
+        #     elif self.conf.pupil=="F200W":
+        #         # if "x" in self.conf_file:
+        #         if self.conf.filter=="GR150C":
+        #             trace_dy += 1
+        #         # elif "y" in self.transform.trace_axis:
+        #         else:
+        #             trace_dy -= 2
+        #     else:
+        #         pass
 
         elif os.path.basename(self.conf_file) == "NIRCAM_F444W_modA_R.conf":
             trace_dy += -2.5

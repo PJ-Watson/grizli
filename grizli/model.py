@@ -385,9 +385,10 @@ class GrismDisperser(object):
         # Get dispersion parameters at the reference position
         # self.dx = self.conf.dxlam[self.beam]  # + xcenter #-xoffset
         if isinstance(self.conf, grismconf.TransformGrismconf):
+        # if "V5" in self.conf.conf_file:
             self.dx = self.conf.eval_dxlam(
-                x=(self.xc+self.xcenter-self.pad[1]),
-                y=(self.yc+self.ycenter-self.pad[0]),
+                x=(self.xc + self.xcenter - self.pad[1]) / self.grow,
+                y=(self.yc + self.ycenter - self.pad[0]) / self.grow,
                 beam=self.beam,
             )
         else:
@@ -463,7 +464,18 @@ class GrismDisperser(object):
         try:
             self.flat_index = self.idx[dyc + self.x0[0], self.dxpix]
         except IndexError:
-            print('Index Error', id, dyc.dtype, self.dxpix.dtype, self.x0[0], self.xc, self.yc, self.beam, self.ytrace_beam.max(), self.ytrace_beam.min())
+            print(
+                'Index Error',
+                self.conf.dxlam[self.beam],
+                self.dx,
+                dyc,
+                self.x0[0],
+                self.xc,
+                self.yc,
+                f"Beam={self.beam}",
+                self.ytrace_beam.max(),
+                self.ytrace_beam.min(),
+            )
             raise IndexError
 
         # Trace, wavelength, sensitivity across entire 2D array
