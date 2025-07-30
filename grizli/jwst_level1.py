@@ -63,8 +63,6 @@ for d in [1,2,3,4]:
 if 'CRDS_CONTEXT' in os.environ:
     CRDS_CONTEXT = os.getenv('CRDS_CONTEXT')
 else:
-    # CRDS_CONTEXT = 'jwst_1069.pmap'
-    # CRDS_CONTEXT = 'jwst_1123.pmap'
     CRDS_CONTEXT = "jwst_1413.pmap"
 
 

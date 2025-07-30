@@ -7530,7 +7530,6 @@ def drizzle_from_visit(
     verbose=True,
     scale_photom=True,
     internal_nircam_zeropoints=True,
-    # context="jwst_1293.pmap",
     context="jwst_1413.pmap",
     weight_type="jwst_var",
     rnoise_percentile=99,
