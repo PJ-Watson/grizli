@@ -2037,7 +2037,7 @@ def mod_dq_bits(value, okbits=32 + 64 + 512, badbits=0, verbose=False):
         print(f"Unset bits: {np.binary_repr(okbits)}")
         print(f"Set bits: {np.binary_repr(badbits)}")
 
-    return (value & ~okbits) | badbits
+    return (value.astype(int) & ~okbits) | badbits
 
 
 
@@ -8123,7 +8123,7 @@ def drizzle_from_visit(
                     if jwst_dq_flags is not None:
                         bad_bits |= get_jwst_dq_bit(jwst_dq_flags, verbose=verbose)
 
-                    dq = flt[("DQ", ext)].data & bad_bits
+                    dq = flt[("DQ", ext)].data.astype(int) & bad_bits
                     dq |= bpdata.astype(dq.dtype)
 
                     # Clipping threshold for BKG extensions, global at top
