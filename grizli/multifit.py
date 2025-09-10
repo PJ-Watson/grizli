@@ -5319,6 +5319,7 @@ class MultiBeam(GroupFitter):
         lm=False,
         fit_with_psf=False,
         reset=False,
+        **model_kwargs,
     ):
         """
         Fit a global trace shift to the beams.
@@ -5346,6 +5347,10 @@ class MultiBeam(GroupFitter):
         reset : bool
             Reset the trace shifts to zero.
 
+        **model_kwargs :
+            Additional keyword arguments to pass to
+            `~grizli.model.GrismDisperser.compute_model`.
+
         Returns
         -------
         shifts : `~numpy.ndarray`
@@ -5366,10 +5371,12 @@ class MultiBeam(GroupFitter):
         else:
             indices = [[i] for i in range(self.N)]
 
+        print (len(indices), self.N, split_groups)
+
         s0 = np.zeros(len(indices))
         bounds = np.array([[-max_shift, max_shift]] * len(indices))
 
-        args = (self, indices, 0, lm, verbose, fit_with_psf)
+        args = (self, indices, 0, lm, verbose, fit_with_psf, model_kwargs)
         if reset:
             shifts = np.zeros(len(indices))
             out = None
@@ -5423,7 +5430,7 @@ class MultiBeam(GroupFitter):
         return shifts, out
 
     @staticmethod
-    def eval_trace_shift(shifts, self, indices, poly_order, lm, verbose, fit_with_psf):
+    def eval_trace_shift(shifts, self, indices, poly_order, lm, verbose, fit_with_psf, model_kwargs={}):
         """
         Evaluate the trace shifts.
 
@@ -5450,6 +5457,10 @@ class MultiBeam(GroupFitter):
         fit_with_psf : bool
             Fit with the PSF model.
 
+        **model_kwargs :
+            Additional keyword arguments to pass to
+            `~grizli.model.GrismDisperser.compute_model`.
+
         Returns
         -------
         chi2 : float
@@ -5471,8 +5482,8 @@ class MultiBeam(GroupFitter):
                         yoff=0, psf_params=beam.beam.psf_params  # shifts[il],
                     )
 
-                    beam.compute_model(use_psf=True)
-                    m = beam.compute_model(in_place=False)
+                    beam.compute_model(use_psf=True, **model_kwargs)
+                    m = beam.compute_model(in_place=False, **model_kwargs)
                     # beam.modelf = beam.model.flatten()
                     # beam.model = beam.modelf.reshape(beam.beam.sh_beam)
 
@@ -5481,7 +5492,7 @@ class MultiBeam(GroupFitter):
                 else:
                     # self.beams[i].beam.add_ytrace_offset(shifts[il])
                     # self.beams[i].compute_model(is_cgs=True)
-                    beam.compute_model(use_psf=False)
+                    beam.compute_model(use_psf=False, **model_kwargs)
 
         self.flat_flam = np.hstack([b.beam.model.flatten() for b in self.beams])
         self.poly_order = -1
