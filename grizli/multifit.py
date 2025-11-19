@@ -7518,7 +7518,8 @@ def drizzle_2d_spectrum_wcs(
 
     for i, beam in enumerate(beams):
         # Get specific WCS for each beam
-        beam_header, beam_wcs = beam.get_2d_wcs()
+        # beam_header, beam_wcs = beam.get_2d_wcs()
+        beam_header, beam_wcs = beam.full_2d_wcs()
         beam_wcs = beam.grism.wcs.deepcopy()
 
         # Shift SIP reference

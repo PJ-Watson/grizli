@@ -3562,13 +3562,19 @@ class GrismFLT(object):
             # print '!! X, Y: ', x, y, self.direct.origin, size
 
             if xcat is not None:
-                xc, yc = int(np.round(xcat)) + 1, int(np.round(ycat)) + 1
-                xcenter = xcat - (xc - 1)
-                ycenter = ycat - (yc - 1)
+                # xc, yc = int(np.round(xcat)) + 1, int(np.round(ycat)) + 1
+                # xcenter = xcat - (xc - 1)
+                # ycenter = ycat - (yc - 1)
+                xc, yc = int(np.round(xcat)), int(np.round(ycat))
+                xcenter = xcat-xc
+                ycenter = ycat-yc
             else:
-                xc, yc = int(np.round(x)) + 1, int(np.round(y)) + 1
-                xcenter = x - (xc - 1)
-                ycenter = y - (yc - 1)
+                # xc, yc = int(np.round(x)) + 1, int(np.round(y)) + 1
+                # xcenter = x - (xc - 1)
+                # ycenter = y - (yc - 1)
+                xc, yc = int(np.round(x)), int(np.round(y))
+                xcenter = xcat-xc
+                ycenter = ycat-yc
 
             origin = [
                 yc - size + self.direct.origin[0],
@@ -5141,8 +5147,11 @@ class BeamCutout(object):
         tab.meta["CONFFILE"] = os.path.basename(self.beam.conf.conf_file)
 
         tab["wavelength"] = np.asarray(self.beam.lam * u.Angstrom, dtype=dtype)
-        tab["trace"] = np.asarray(
-            self.beam.ytrace + self.beam.sh_beam[0] / 2 - self.beam.ycenter, dtype=dtype
+        # tab["trace"] = np.asarray(
+        #     self.beam.ytrace + self.beam.sh_beam[0] / 2 - self.beam.ycenter, dtype=dtype
+        # )
+        tab['trace'] = np.asarray(
+            self.beam.ytrace + self.beam.sh_beam[0] / 2 + self.beam.ycenter, dtype=dtype
         )
 
         sens_units = u.erg / u.second / u.cm**2 / u.Angstrom / (u.electron / u.second)
@@ -5235,7 +5244,8 @@ class BeamCutout(object):
 
         #######
         # 2D Spectroscopic WCS
-        hdu2d, wcs2d = self.get_2d_wcs()
+        # hdu2d, wcs2d = self.get_2d_wcs()
+        hdu2d, wcs2d = self.full_2d_wcs()
 
         # Get available 'WCSNAME'+key
         for key in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
@@ -5450,8 +5460,10 @@ class BeamCutout(object):
 
         h["WCSNAME"] = "BeamLinear2D"
 
-        h["CRPIX1"] = self.beam.sh_beam[0] / 2 - self.beam.xcenter
-        h["CRPIX2"] = self.beam.sh_beam[0] / 2 - self.beam.ycenter
+        # h["CRPIX1"] = self.beam.sh_beam[0] / 2 - self.beam.xcenter
+        # h["CRPIX2"] = self.beam.sh_beam[0] / 2 - self.beam.ycenter
+        h['CRPIX1'] = self.beam.sh_beam[0] / 2 + self.beam.xcenter
+        h['CRPIX2'] = self.beam.sh_beam[0] / 2 + self.beam.ycenter
 
         # Wavelength, A
         h["CNAME1"] = "Wave-Angstrom"
@@ -5502,15 +5514,18 @@ class BeamCutout(object):
 
         """
         h = pyfits.Header()
-        h["CRPIX1"] = self.beam.sh_beam[0] / 2 - self.beam.xcenter
-        h["CRPIX2"] = self.beam.sh_beam[0] / 2 - self.beam.ycenter
+        # h["CRPIX1"] = self.beam.sh_beam[0] / 2 - self.beam.xcenter
+        # h["CRPIX2"] = self.beam.sh_beam[0] / 2 - self.beam.ycenter
+        h['CRPIX1'] = self.beam.sh_beam[0] / 2 + self.beam.xcenter
+        h['CRPIX2'] = self.beam.sh_beam[0] / 2 + self.beam.ycenter
+
         h["CRVAL1"] = self.beam.lam_beam[0] / 1.0e4
-        h["CD1_1"] = (self.beam.lam_beam[1] - self.beam.lam_beam[0]) / 1.0e4
-        h["CD1_2"] = 0.0
+        # h["CD1_1"] = (self.beam.lam_beam[1] - self.beam.lam_beam[0]) / 1.0e4
+        # h["CD1_2"] = 0.0
 
         h["CRVAL2"] = -1 * self.beam.ytrace_beam[0]
-        h["CD2_2"] = 1.0
-        h["CD2_1"] = -(self.beam.ytrace_beam[1] - self.beam.ytrace_beam[0])
+        # h["CD2_2"] = 1.0
+        # h["CD2_1"] = -(self.beam.ytrace_beam[1] - self.beam.ytrace_beam[0])
 
         h["CTYPE1"] = "RA---TAN-SIP"
         h["CUNIT1"] = "mas"
@@ -5520,39 +5535,68 @@ class BeamCutout(object):
         # wcs_header = grizli.utils.to_header(self.grism.wcs)
 
         x = np.arange(len(self.beam.lam_beam))
+        # c = (
+        #     np.polynomial.Polynomial.fit(x, self.beam.lam_beam / 1.0e4, deg=2)
+        #     .convert()
+        #     .coef[::-1]
+        # )
+        # # c = np.polynomial.Polynomial.fit((self.beam.lam_beam-self.beam.lam_beam[0])/1.e4, x/h['CD1_1'],deg=2).convert().coef[::-1]
+
+        # ct = (
+        #     np.polynomial.Polynomial.fit(x, self.beam.ytrace_beam, deg=2)
+        #     .convert()
+        #     .coef[::-1]
+        # )
+
         c = (
-            np.polynomial.Polynomial.fit(x, self.beam.lam_beam / 1.0e4, deg=2)
+            np.polynomial.Polynomial.fit(x, self.beam.lam_beam / 1.0e4, deg=3)
             .convert()
             .coef[::-1]
         )
-        # c = np.polynomial.Polynomial.fit((self.beam.lam_beam-self.beam.lam_beam[0])/1.e4, x/h['CD1_1'],deg=2).convert().coef[::-1]
 
         ct = (
-            np.polynomial.Polynomial.fit(x, self.beam.ytrace_beam, deg=2)
+            np.polynomial.Polynomial.fit(
+                x, self.beam.ytrace_beam[0] - self.beam.ytrace_beam, deg=3
+            )
             .convert()
             .coef[::-1]
         )
 
-        h["A_ORDER"] = 2
-        h["B_ORDER"] = 2
 
-        h["A_0_2"] = 0.0
-        h["A_1_2"] = 0.0
-        h["A_2_2"] = 0.0
-        h["A_2_1"] = 0.0
-        h["A_2_0"] = c[0]  # /c[1]
-        h["CD1_1"] = c[1]
+        # h["A_ORDER"] = 2
+        # h["B_ORDER"] = 2
 
-        h["B_0_2"] = 0.0
-        h["B_1_2"] = 0.0
-        h["B_2_2"] = 0.0
-        h["B_2_1"] = 0.0
-        if ct[1] != 0:
-            h["B_2_0"] = ct[0]  # /ct[1]
-        else:
-            h["B_2_0"] = 0
+        # h["A_0_2"] = 0.0
+        # h["A_1_2"] = 0.0
+        # h["A_2_2"] = 0.0
+        # h["A_2_1"] = 0.0
+        # h["A_2_0"] = c[0]  # /c[1]
+        # h["CD1_1"] = c[1]
+
+        # h["B_0_2"] = 0.0
+        # h["B_1_2"] = 0.0
+        # h["B_2_2"] = 0.0
+        # h["B_2_1"] = 0.0
+        # if ct[1] != 0:
+        #     h["B_2_0"] = ct[0]  # /ct[1]
+        # else:
+        #     h["B_2_0"] = 0
 
         # h['B_2_0'] = 0
+
+        h['A_ORDER'] = 3
+        h['B_ORDER'] = 3
+
+        h['CD1_2'] = 0.
+        h['CD1_1'] = c[2]
+        h['A_2_0'] = c[1]/c[2]
+        h['A_3_0'] = c[0]/c[2]
+
+        h['CD2_2'] = 1
+        h['CD2_1'] = 0
+        h['B_1_0'] = ct[2]
+        h['B_2_0'] = ct[1]
+        h['B_3_0'] = ct[0]
 
         if data is None:
             data = np.zeros(self.beam.sh_beam, dtype=np.float32)
@@ -5579,7 +5623,8 @@ class BeamCutout(object):
             Center coordinates of the beam thumbnail in decimal degrees
         """
         pix_center = np.array([self.beam.sh][::-1]) / 2.0
-        pix_center -= np.array([self.beam.xcenter, self.beam.ycenter])
+        # pix_center -= np.array([self.beam.xcenter, self.beam.ycenter])
+        pix_center += np.array([self.beam.xcenter, self.beam.ycenter])
         if self.direct.wcs.sip is not None:
             for i in range(2):
                 self.direct.wcs.sip.crpix[i] = self.direct.wcs.wcs.crpix[i]
