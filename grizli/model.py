@@ -1692,7 +1692,7 @@ class ImageData(object):
                 ref_photplam = ref_h["PHOTPLAM"]
                 # ref_filter = ref_h['FILTER']
                 ref_filter = utils.parse_filter_from_header(ref_h, filter_only=True)
-                ref_filter = utils.parse_filter_from_header(ref_h)
+                # ref_filter = utils.parse_filter_from_header(ref_h)
 
             else:
                 ref_data = None
@@ -3573,8 +3573,8 @@ class GrismFLT(object):
                 # xcenter = x - (xc - 1)
                 # ycenter = y - (yc - 1)
                 xc, yc = int(np.round(x)), int(np.round(y))
-                xcenter = xcat-xc
-                ycenter = ycat-yc
+                xcenter = x-xc
+                ycenter = y-yc
 
             origin = [
                 yc - size + self.direct.origin[0],
@@ -5244,8 +5244,8 @@ class BeamCutout(object):
 
         #######
         # 2D Spectroscopic WCS
-        # hdu2d, wcs2d = self.get_2d_wcs()
-        hdu2d, wcs2d = self.full_2d_wcs()
+        hdu2d, wcs2d = self.get_2d_wcs()
+        # hdu2d, wcs2d = self.full_2d_wcs()
 
         # Get available 'WCSNAME'+key
         for key in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
@@ -5376,7 +5376,7 @@ class BeamCutout(object):
 
         # Trace properties at desired wavelength
         dx = np.interp(wavelength, self.beam.lam_beam, xarr)
-        dy = np.interp(wavelength, self.beam.lam_beam, self.beam.ytrace_beam) + 1
+        dy = np.interp(wavelength, self.beam.lam_beam, self.beam.ytrace_beam)# + 1
 
         dl = np.interp(wavelength, self.beam.lam_beam[1:], np.diff(self.beam.lam_beam))
 
