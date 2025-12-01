@@ -3562,19 +3562,19 @@ class GrismFLT(object):
             # print '!! X, Y: ', x, y, self.direct.origin, size
 
             if xcat is not None:
-                # xc, yc = int(np.round(xcat)) + 1, int(np.round(ycat)) + 1
-                # xcenter = xcat - (xc - 1)
-                # ycenter = ycat - (yc - 1)
-                xc, yc = int(np.round(xcat)), int(np.round(ycat))
-                xcenter = xcat-xc
-                ycenter = ycat-yc
+                xc, yc = int(np.round(xcat)) + 1, int(np.round(ycat)) + 1
+                xcenter = xcat - (xc - 1)
+                ycenter = ycat - (yc - 1)
+                # xc, yc = int(np.round(xcat)), int(np.round(ycat))
+                # xcenter = xcat-xc
+                # ycenter = ycat-yc
             else:
-                # xc, yc = int(np.round(x)) + 1, int(np.round(y)) + 1
-                # xcenter = x - (xc - 1)
-                # ycenter = y - (yc - 1)
-                xc, yc = int(np.round(x)), int(np.round(y))
-                xcenter = x-xc
-                ycenter = y-yc
+                xc, yc = int(np.round(x)) + 1, int(np.round(y)) + 1
+                xcenter = x - (xc - 1)
+                ycenter = y - (yc - 1)
+                # xc, yc = int(np.round(x)), int(np.round(y))
+                # xcenter = x-xc
+                # ycenter = y-yc
 
             origin = [
                 yc - size + self.direct.origin[0],
