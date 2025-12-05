@@ -767,12 +767,24 @@ def get_config_filename(
     if instrume == "NIRISS":
 
         conf_files = []
-        if os.getenv("NIRISS_CALIB", "NGDEEP")=="NGDEEP":
-            conf_files.append(
-                os.path.join(GRIZLI_PATH, "CONF/NIRISS_{1}_{0}.V5.conf".format(grism, filter)))
-        else:
-            conf_files.append(os.path.join(GRIZLI_PATH,
-                            'CONF/{0}.{1}.221215.conf'.format(grism, filter)))
+        match os.getenv("NIRISS_CALIB", "GRIZLI"):
+            case "GRIZLI":
+                conf_files.append(
+                    os.path.join(
+                        GRIZLI_PATH, "CONF/{0}.{1}.221215.conf".format(grism, filter)
+                    )
+                )
+            case "NGDEEP":
+                conf_files.append(
+                    os.path.join(
+                        GRIZLI_PATH, "CONF/NIRISS_{1}_{0}.V5.conf".format(grism, filter)
+                    )
+                )
+            case conf_file_pattern:
+                print(conf_file_pattern, conf_file_pattern.format(grism, filter))
+                conf_files.append(
+                    os.path.join(GRIZLI_PATH, conf_file_pattern.format(grism, filter))
+                )
         conf_files.append(
             os.path.join(GRIZLI_PATH, "CONF/{0}.{1}.220725.conf".format(grism, filter))
         )
@@ -934,11 +946,11 @@ class JwstDispersionTransform(object):
             self.base = None
 
         if conf_file is not None:            
-            if 'NIRISS' in conf_file and "V5" in conf_file:
+            if "NIRISS" in conf_file and "V5" in conf_file:
                 # NP conf files, NIRISS_F200W_GR150R.V5
-                self.instrument = 'NIRISS'
-                self.grism = self.base.split(".")[0].split('_')[2][-1]
-                self.module = 'A'
+                self.instrument = "NIRISS"
+                self.grism = self.base.split(".")[0].split("_")[2][-1]
+                self.module = "A"
             elif "NIRISS" in conf_file:
                 # NIRISS_F200W_GR150R.conf
                 self.instrument = "NIRISS"
@@ -1614,9 +1626,12 @@ def load_grism_config(conf_file, warnings=True):
         conf.get_beams()
     elif "specwcs" in conf_file:
         conf = TransformGrismconf(conf_file)
-        conf.get_beams()        
-    elif '.V5' in conf_file:
+        conf.get_beams()
+    elif ".V5" in conf_file:
         conf = TransformGrismconf(conf_file)
+        conf.get_beams()
+    elif "CUSTOM" in conf_file:
+        conf = CustomGrismConf(conf_file)
         conf.get_beams()
     else:
         conf = aXeConf(conf_file)
@@ -2564,3 +2579,184 @@ class CRDSGrismConf:
             si = utils.read_catalog(sens_file)
 
             self.SENS_data["+1"] = [si["WAVELENGTH"] / 1.0e4, si["SENSITIVITY"]]
+
+
+class CustomGrismconf(TransformGrismconf):
+    """
+    Enable the combination of multiple grism configuration files.
+    """
+
+    def __init__(self, conf_file=""):
+        """
+        Parameters
+        ----------
+        conf_file : str
+            Configuration filename
+
+        """
+
+        print(conf_file)
+
+        self.conf_readlines = open(conf_file).readlines()
+
+        self.order_names = {
+            "A": "+1",
+            "B": "0",
+            "C": "+2",
+            "D": "+3",
+            "E": "-1",
+            "F": "+4",
+        }
+
+        self.beam_names = {}
+        for k in self.order_names:
+            self.beam_names[self.order_names[k]] = k
+
+        self.beam_name_to_conf_name = {}
+        for k in self.beam_names.keys():
+            self.beam_name_to_conf_name[k] = self._get_value(string=f"BEAM_{k}")
+
+        for k, v in self.beam_name_to_conf_name.items():
+            if v is None:
+                self.order_names.pop(self.beam_names[k])
+                self.beam_names.pop(k)
+
+        self.beam_name_to_conf_name = {
+            k: v for k, v in self.beam_name_to_conf_name.items() if v is not None
+        }
+
+        print(self.beam_name_to_conf_name)
+
+        self.conf_name_to_beam_name = {}
+        for k, v in self.beam_name_to_conf_name.items():
+            # for x in v:
+            self.conf_name_to_beam_name.setdefault(v, []).append(k)
+
+        print(self.conf_name_to_beam_name)
+
+        self.conf_name_to_obj = {}
+        self.sens = {}
+        for k in self.conf_name_to_beam_name.keys():
+            self.conf_name_to_obj[k] = load_grism_config(os.path.join(GRIZLI_PATH, k))
+
+        self.conf_dict = {}
+
+    @property
+    def orders(self):
+        """
+        GRISMCONF order names, like '+1', '0', '+2', etc.
+        """
+        return list(self.beam_names.keys())
+
+    @property
+    def beams(self):
+        """
+        aXe beam names like 'A','B','C', etc.
+        """
+        # beams = [self.beam_names[k] for k in self.orders]
+        beams = []
+        for k in self.orders:
+            # print (k)
+            if k in self.beam_names:
+                beams.append(self.beam_names[k])
+
+        return beams
+
+    def get_beams(self, *args, **kwargs):
+        """
+        Get beam parameters and read sensitivity curves.
+        """
+
+        self.dxlam = OrderedDict()
+        self.nx = OrderedDict()
+        self.sens = OrderedDict()
+
+        for k in self.conf_name_to_beam_name.keys():
+            if isinstance(k, aXeConf):
+                self.conf_name_to_obj[k].get_beams()
+            elif isinstance(k, TransformGrismconf):
+                self.conf_name_to_obj[k].get_beams(*args, **kwargs)
+
+        for beam in self.beams:
+            conf_obj = self.conf_name_to_obj[
+                self.beam_name_to_conf_name[self.order_names[beam]]
+            ]
+            # print (beam, conf_obj)
+            self.dxlam[beam] = conf_obj.dxlam[beam]
+            self.nx[beam] = conf_obj.nx[beam]
+            self.sens[beam] = conf_obj.sens[beam]
+
+            self.conf_dict[f"BEAM{beam}"] = conf_obj.conf_dict[f"BEAM{beam}"]
+            self.conf_dict[f"MMAG_EXTRACT_{beam}"] = conf_obj.conf_dict[
+                f"MMAG_EXTRACT_{beam}"
+            ]
+
+    def get_beam_trace(self, x=1024, y=1024, dx=0.0, beam="A", fwcpos=None):
+        """
+        Function analogous to `grizli.grismconf.aXeConf.get_beam_trace` but
+        that accounts for the different dispersion axes of JWST grisms
+
+        Parameters
+        ----------
+        x, y : float
+            Reference position in the rotated frame
+
+        dx : array-like
+            Offset in pixels along the trace
+
+        beam : str
+            Grism order, translated from +1, 0, +2, +3, -1 = A, B, C, D, E
+
+        fwcpos : float
+            NIRISS rotation *(not implemented)*
+
+        Returns
+        -------
+        dy : float or array-like
+            Center of the trace in y pixels offset from `(x,y)` evaluated at
+            `dx`.
+
+        lam : float or array-like
+            Effective wavelength along the trace evaluated at `dx`.
+
+        """
+
+        conf_obj = self.conf_name_to_obj[
+            self.beam_name_to_conf_name[self.order_names[beam]]
+        ]
+
+        return conf_obj.get_beam_trace(x=x, y=y, dx=dx, beam=beam, fwcpos=fwcpos)
+
+    def eval_dxlam(self, x=1024, y=1024, beam="A", nt=512, min_sens=1e-3):
+
+        conf_obj = self.conf_name_to_obj[
+            self.beam_name_to_conf_name[self.order_names[beam]]
+        ]
+
+        if isinstance(conf_obj, aXeConf):
+            return conf_obj.dxlam[beam]
+        elif isinstance(conf_obj, TransformGrismconf):
+            return conf_obj.eval_dxlam(x=x, y=y, beam=beam, nt=nt, min_sens=min_sens)
+
+    def _get_value(self, string, type=None):
+        """Helper function to simply return the value for a simple keyword parameters
+        in the config file."""
+
+        for l in self.conf_readlines:
+            ws = l.split()
+            if len(ws) > 0 and ws[0] == string:
+                if len(ws) == 2:
+                    if type == None:
+                        return ws[1]
+                    elif type == float:
+                        return float(ws[1])
+                    elif type == int:
+                        return int(ws[1])
+                else:
+                    if type == None:
+                        return ws[1:]
+                    elif type == float:
+                        return [float(x) for x in ws[1:]]
+                    elif type == int:
+                        return [int(x) for x in ws[1:]]
+        return None
