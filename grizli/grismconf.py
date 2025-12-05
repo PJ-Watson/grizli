@@ -26,6 +26,7 @@ if os.getenv("NIRCAM_CONF_VERSION") is not None:
 if os.getenv("CRDS_CONTEXT") is not None:
     DEFAULT_CRDS_CONTEXT = os.getenv("CRDS_CONTEXT")
 
+VERBOSITY = 3
 
 def show_available_nircam_versions(filter="F444W", module="B", grism="R", verbose=True):
     """
@@ -881,7 +882,8 @@ def get_config_filename(
         )
 
         conf_file = refs["specwcs"]
-        print("get_conf: xxx", conf_file, grism, filter, pupil, module, instrume)
+        if VERBOSITY & 2 > 0:
+            print("get_conf: xxx", conf_file, grism, filter, pupil, module, instrume)
 
     if instrume == "WFIRST":
         conf_file = os.path.join(GRIZLI_PATH, "CONF/WFIRST.conf")
@@ -1150,7 +1152,7 @@ class TransformGrismconf(object):
 
     """
 
-    def __init__(self, conf_file=""):
+    def __init__(self, conf_file="", **kwargs):
         """
         Parameters
         ----------
@@ -1163,7 +1165,7 @@ class TransformGrismconf(object):
         self.conf_file = conf_file
 
         if "specwcs" in conf_file:
-            self.conf = CRDSGrismConf(conf_file, get_photom=True)
+            self.conf = CRDSGrismConf(conf_file, get_photom=True, **kwargs)
             kws = {
                 "instrument": self.conf.instrument,
                 "module": self.conf.module,
@@ -1536,7 +1538,7 @@ class TransformGrismconf(object):
 
                 self.sens["A"] = _tab
 
-        self.load_nircam_sensitivity_curve()
+        self.load_nircam_sensitivity_curve(**kwargs)
 
     def load_nircam_sensitivity_curve(self, verbose=False, **kwargs):
         """

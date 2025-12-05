@@ -19,6 +19,7 @@ import numpy as np
 import astropy.units as u
 
 from sregion import SRegion, patch_from_polygon
+from unik import Unique
 
 from . import GRIZLI_PATH
 from .constants import JWST_DQ_FLAGS, KMS, FLAMBDA_CGS, FNU_CGS
@@ -54,36 +55,67 @@ SNS_HUSL = {
     "pink": (0.9603888539940703, 0.3814317878772117, 0.8683117650835491),
 }
 
+# GRISM_COLORS = {
+#     "G800L": (0.0, 0.4470588235294118, 0.6980392156862745),
+#     "G102": (0.0, 0.6196078431372549, 0.45098039215686275),
+#     "G141": (0.8352941176470589, 0.3686274509803922, 0.0),
+#     "none": (0.8, 0.4745098039215686, 0.6549019607843137),
+#     "G150": "k",
+#     "F277W": (0.0, 0.6196078431372549, 0.45098039215686275),
+#     "F356W": (0.8352941176470589, 0.3686274509803922, 0.0),
+#     "F444W": (0.8, 0.4745098039215686, 0.6549019607843137),
+#     "F250M": "lightblue",
+#     "F300M": "steelblue",
+#     "F335M": "cornflowerblue",
+#     "F360M": "royalblue",
+#     "F410M": (0.0, 0.4470588235294118, 0.6980392156862745),
+#     "F430M": "sandybrown",
+#     "F460M": "lightsalmon",
+#     "F480M": "coral",
+#     "F322W2": "olive",
+#     "G280": "purple",
+#     "F090W": (0.0, 0.4470588235294118, 0.6980392156862745),
+#     "F115W": (0.0, 0.6196078431372549, 0.45098039215686275),
+#     "F150W": (0.8352941176470589, 0.3686274509803922, 0.0),
+#     "F140M": (0.8352941176470589, 0.3686274509803922, 0.0),
+#     "F158M": (0.8352941176470589, 0.3686274509803922, 0.0),
+#     "F200W": (0.8, 0.4745098039215686, 0.6549019607843137),
+#     "F140M": "orange",
+#     "BLUE": "#1f77b4",  # Euclid
+#     "RED": "#d62728",
+#     "CLEARP": "b",
+# }
+
 GRISM_COLORS = {
-    "G800L": (0.0, 0.4470588235294118, 0.6980392156862745),
-    "G102": (0.0, 0.6196078431372549, 0.45098039215686275),
-    "G141": (0.8352941176470589, 0.3686274509803922, 0.0),
-    "none": (0.8, 0.4745098039215686, 0.6549019607843137),
-    "G150": "k",
-    "F277W": (0.0, 0.6196078431372549, 0.45098039215686275),
-    "F356W": (0.8352941176470589, 0.3686274509803922, 0.0),
-    "F444W": (0.8, 0.4745098039215686, 0.6549019607843137),
-    "F250M": "lightblue",
-    "F300M": "steelblue",
-    "F335M": "cornflowerblue",
-    "F360M": "royalblue",
-    "F410M": (0.0, 0.4470588235294118, 0.6980392156862745),
-    "F430M": "sandybrown",
-    "F460M": "lightsalmon",
-    "F480M": "coral",
-    "F322W2": "olive",
-    "G280": "purple",
-    "F090W": (0.0, 0.4470588235294118, 0.6980392156862745),
-    "F115W": (0.0, 0.6196078431372549, 0.45098039215686275),
-    "F150W": (0.8352941176470589, 0.3686274509803922, 0.0),
-    "F140M": (0.8352941176470589, 0.3686274509803922, 0.0),
-    "F158M": (0.8352941176470589, 0.3686274509803922, 0.0),
-    "F200W": (0.8, 0.4745098039215686, 0.6549019607843137),
-    "F140M": "orange",
-    "BLUE": "#1f77b4",  # Euclid
-    "RED": "#d62728",
-    "CLEARP": "b",
+ 'G800L': 'cornflowerblue',
+  'G102': 'mediumseagreen',
+  'G141': 'chocolate',
+  'none': 'pink',
+  'G150': 'grey',
+ 'F277W': 'lightseagreen',
+ 'F356W': 'sandybrown',
+ 'F444W': 'violet',
+ 'F250M': 'lightblue',
+ 'F300M': 'skyblue',
+ 'F335M': 'steelblue',
+ 'F360M': 'cornflowerblue',
+ 'F410M': 'lightcoral',
+ 'F430M': 'tomato',
+ 'F460M': 'indianred',
+ 'F480M': 'maroon',
+'F322W2': 'olive',
+  'G280': 'blueviolet',
+ 'F090W': 'lightsteelblue',
+ 'F115W': 'forestgreen',
+ 'F150W': 'goldenrod',
+ 'F140M': 'peachpuff',
+ 'F158M': 'lightsalmon',
+ 'F200W': 'palevioletred',
+  'BLUE': 'dodgerblue',
+   'RED': 'crimson',
+'CLEARP': 'silver',
 }
+
 
 GRISM_MAJOR = {
     "G102": 0.1,
@@ -2659,9 +2691,9 @@ def get_line_wavelengths():
     line_ratios["CIII-1906"] = [1.0]
     line_wavelengths["CIII-1908"] = [1908.734]
     line_ratios["CIII-1908"] = [1.0]
-    line_wavelengths["CI-9580"] = [9850.26]  # leave typo for back compatibility
+    line_wavelengths["CI-9580"] = [9852.96]  # leave typo for back compatibility
     line_ratios["CI-9580"] = [1.0]
-    line_wavelengths["CI-9850"] = [9850.26]
+    line_wavelengths["CI-9850"] = [9852.96]
     line_ratios["CI-9850"] = [1.0]
 
     # Sodium D I lines from Davies 2023
@@ -7534,6 +7566,7 @@ def drizzle_from_visit(
     weight_type="jwst_var",
     rnoise_percentile=99,
     calc_wcsmap=False,
+    with_slices=False,
     niriss_ghost_kwargs={},
     use_background_extension=True,
     snowblind_kwargs=None,
@@ -8241,6 +8274,7 @@ def drizzle_from_visit(
                 calc_wcsmap=calc_wcsmap,
                 verbose=verbose,
                 data=None,
+                with_slices=with_slices,
             )
 
             outsci, outwht, outvar, outctx, header, xoutwcs = res
@@ -8285,6 +8319,7 @@ def drizzle_from_visit(
                 calc_wcsmap=calc_wcsmap,
                 verbose=verbose,
                 data=data,
+                with_slices=with_slices,
             )
 
             outsci, outwht, outvar, outctx = res[:4]
@@ -8357,6 +8392,8 @@ def drizzle_array_groups(
     verbose=True,
     data=None,
     first_uniqid=1,
+    with_slices=False,
+    **kwargs,
 ):
     """
     Drizzle array data with associated wcs
@@ -8407,6 +8444,9 @@ def drizzle_array_groups(
 
     first_uniqid : int, optional
         First `uniqid` value to use for the drizzle for contex maps
+
+    with_slices : bool
+        Compute slices of the overlap with each exposure before drizzling to the output array
 
     Returns
     -------
@@ -8515,11 +8555,12 @@ def drizzle_array_groups(
     if first_uniqid + N > 31 and verbose:
         msg = "Warning: Too many input images for context map, will wrap around"
         log_comment(LOGFILE, msg, verbose=verbose, show_date=True)
+
+    with_slices &= calc_wcsmap == 0
+
     for i in range(N):
-        if verbose:
-            # log.info('Drizzle array {0}/{1}'.format(i+1, N))
-            msg = "Drizzle array {0}/{1}".format(i + 1, N)
-            log_comment(LOGFILE, msg, verbose=verbose, show_date=True)
+        # log.info('Drizzle array {0}/{1}'.format(i+1, N))
+        msg = "Drizzle array {0}/{1}".format(i + 1, N)
 
         if calc_wcsmap > 1:
             wcsmap = WCSMapAll  # (wcs_list[i], outputwcs)
@@ -8527,14 +8568,66 @@ def drizzle_array_groups(
         else:
             wcsmap = None
 
+        # if (outwht > 0).sum() > 0:
+        #     print(f"xxx owht {np.nanmax(outwht[outwht > 0])}  {(outwht > 0).sum()}")
+        #
+        if with_slices:
+            # lower-left / upper-right corner in the output frame
+            sr_i = SRegion(wcs_list[i], pad=1.1)
+            xy = np.round(outputwcs.all_world2pix(sr_i.xy[0], 0)).astype(int)
+
+            ll = xy.min(axis=0)
+            ur = xy.max(axis=0)
+
+            # Does the exposure not overlap with the target at all?
+            if (ur[0] <= 0) | (ur[1] <= 0) | (ll[0] >= shape[1]) | (ll[1] >= shape[0]):
+                msg += " slice (skip)"
+                log_comment(LOGFILE, msg, verbose=verbose, show_date=True)
+
+                continue
+
+            slx = slice(np.maximum(ll[0], 0), np.minimum(ur[0], shape[1]))
+            sly = slice(np.maximum(ll[1], 0), np.minimum(ur[1], shape[0]))
+
+            msg += f"  slice [{sly.start}:{sly.stop}, {slx.start}:{slx.stop}]"
+
+            outputwcs_i = outputwcs.slice((sly, slx))
+            outputwcs_i.pscale = get_wcs_pscale(outputwcs_i)
+
+            osci = outsci[sly, slx] * 1
+            owht = outwht[sly, slx] * 1
+            octx = outctx[sly, slx] * 1
+
+            if outvar is not None:
+                ovar = outvar[sly, slx] * 1
+                ovarw = _varwht[sly, slx] * 1
+                ovarc = _varctx[sly, slx] * 1
+
+        else:
+            outputwcs_i = outputwcs
+
+            osci = outsci
+            owht = outwht
+            octx = outctx
+
+            if outvar is not None:
+                ovar = outvar
+                ovarw = _varwht
+                ovarc = _varctx
+
+        log_comment(LOGFILE, msg, verbose=verbose, show_date=True)
+
+        # if (owht > 0).sum() > 0:
+        #     print(f"yyy owht {np.nanmax(owht[owht > 0])}  {(owht > 0).sum()}")
+        #
         adrizzle.do_driz(
             sci_list[i].astype(np.float32, copy=False),
             wcs_list[i],
             use_weights[i].astype(np.float32, copy=False),
-            outputwcs,
-            outsci,
-            outwht,
-            outctx,
+            outputwcs_i,
+            osci,
+            owht,
+            octx,
             1.0,
             "cps",
             1,
@@ -8551,10 +8644,10 @@ def drizzle_array_groups(
                 (var_list[i] * use_weights[i]).astype(np.float32, copy=False),
                 wcs_list[i],
                 use_weights[i].astype(np.float32, copy=False),
-                outputwcs,
-                outvar,
-                _varwht,
-                _varctx,
+                outputwcs_i,
+                ovar,
+                ovarw,
+                ovarc,
                 1.0,
                 "cps",
                 1,
@@ -8565,6 +8658,22 @@ def drizzle_array_groups(
                 fillval="0",
                 wcsmap=wcsmap,
             )
+
+        if with_slices:
+            # Put slice back in full image
+            outsci[sly, slx] = osci
+            outwht[sly, slx] = owht
+            outctx[sly, slx] = octx
+
+            if outvar is not None:
+                outvar[sly, slx]  =  ovar
+                _varwht[sly, slx] =  ovarw
+                _varctx[sly, slx] =  ovarc
+
+        #     print(f"yyy owht {np.nanmax(owht[owht > 0])}  {(owht > 0).sum()}")
+        #
+        # if (outwht > 0).sum() > 0:
+        #     print(f"xxx owht {np.nanmax(outwht[outwht > 0])}  {(outwht > 0).sum()}")
 
     if needs_var:
         # extra factor of Sum(w_i) for var = Sum(w_i**2 * var_i) / Sum(w_i)**2
@@ -12159,6 +12268,132 @@ def catalog_area(ra=[], dec=[], make_plot=True, NMAX=5000, buff=0.8, verbose=Tru
         return pjoin.area
 
 
+def bounding_polygon(x, y, nsteps=16, use_percentiles=True, closed=True, **kwargs):
+    """
+    Compute a bounding polygon of min(y), max(y) as a function of ``x``
+
+    Parameters
+    ----------
+    steps : int
+        Number of steps sampling from min(x) to max(x)
+
+    use_percentiles : bool
+        If true, use steps in evenly spaced percentiles of x, otherwise use
+        evenly spaced steps
+
+    closed : bool
+        Close the polygon by duplicating the first point at the last
+
+    Returns
+    -------
+    px, py : array-like
+        Coordinates of the bounding polygon
+
+    """
+
+    if use_percentiles:
+        xs = np.nanpercentile(x, np.linspace(0, 100, nsteps+1))
+    else:
+        xs = np.linspace(x.min(), x.max(), nsteps+1)
+
+    xi = []
+    yhi = []
+    ylo = []
+    for i in range(nsteps):
+        sub = (x >= xs[i]) & (x <= xs[i+1])
+        xi += [xs[i], xs[i+1]]
+        yhi += [y[sub].max()]*2
+        ylo += [y[sub].min()]*2
+
+    px = xi + xi[::-1]
+    py = yhi + ylo[::-1]
+    if closed:
+        px.append(xi[0])
+        py.append(yhi[0])
+
+    return np.array(px), np.array(py)
+
+
+def catalog_bounding_polygon(ra, dec, cosd=True, scale=3600., nsteps=128, buffer=(25, -19), simplify=5., as_sregion=True, **kwargs):
+    """
+    Compute a bounding polygon for a list of catalog positions using the
+    intersection of ``bounding_polygon(ra, dec)`` and
+    ``bounding_polygon(dec, ra)``.
+
+    Parameters
+    ----------
+    ra, dec : array-like
+        Catalog positions.  These are assumed to be decimal degrees given the
+        other parameter defaults, but they can be other values
+
+    cosd : bool
+        Rescale dx = (ra - median(ra)) by cos(dec)
+
+    scale : float
+        Additional scale factor of relative coordinates.  Default of 3600 scales
+        sky coordinates in decimal degrees to offset arcsec
+
+    nsteps : int
+        Number of steps for the bounding polygons
+
+    buffer : (float, float)
+        Shapely buffers to apply to the intersection of the ``y(x)`` and ``x(y)``
+        polygons.
+
+    simplify : float
+        Simplify tolerance on the intersection polygon.
+
+        The combination of ``buffer`` and ``simplify`` reduce the complexity of
+        the output.   For sky coordinates and ``scale=3600``, ``buffer``
+        and ``simplify`` have units of arcsec.
+
+        If ``simplify < buffer[0] + buffer[1]``, then the simplified shape should
+        still contain all of the input points.
+
+    as_region, kwargs : bool, **dict
+        Return as `sregion.SRegion(**dict)` object
+
+    Returns
+    -------
+    ro, do : array-like
+        Coordinates of the bounding polygon, if ``as_sregion=False``
+
+    olap : `sregion.SRegion`
+        Region object if requested
+
+    """
+    from shapely.geometry import Polygon
+
+    r0 = np.median(ra)
+    d0 = np.median(dec)
+
+    dr = (ra - r0) * scale * np.cos(d0/180*np.pi)**cosd
+    dd = (dec - d0) * scale
+
+    px, py = bounding_polygon(dr, dd, nsteps=nsteps, **kwargs)
+    pxy = Polygon(np.array([px, py]).T)
+
+    py, px = bounding_polygon(dd, dr, nsteps=nsteps, **kwargs)
+    pyx = Polygon(np.array([px, py]).T)
+
+    olap = pxy.intersection(pyx)
+    if buffer is not None:
+        olap = olap.buffer(buffer[0]).buffer(buffer[1])
+
+    if simplify is not None:
+        olap = olap.simplify(simplify)
+
+    ro, do = np.array(olap.boundary.xy)
+
+    ro = ro / scale / np.cos(d0/180*np.pi)**cosd + r0
+    do = do / scale + d0
+
+    if as_sregion:
+        return SRegion(np.array([ro, do]), **kwargs)
+    else:
+        return ro, do
+
+
 def fix_flt_nan(flt_file, bad_bit=4096, verbose=True):
     """
     Fix NaN values in FLT files
@@ -13097,179 +13332,6 @@ def argv_to_dict(argv, defaults={}, dot_dict=True):
             kwargs[key] = jval
             
     return args, kwargs
-
-
-class Unique(object):
-    def __init__(self, array, verbose=True, **kwargs):
-        """
-        Helper for unique items in an array
-
-        Parameters
-        ----------
-        array : array-like
-            Data to parse, generally strings but can be anything that can
-            be parsed by `numpy.unique`
-
-        verbose : bool
-            Print info on initialization
-
-        Attributes
-        ----------
-        dim : int
-            ``size`` of input ``array``
-
-        values : list
-            Unique elements of ``array``
-
-        indices : list
-            Integer list length of ``array`` with the indices of ``values``
-            for each element
-
-        counts : list
-            Counts of each element of ``values``
-
-
-        Methods
-        -------
-        __get__(key)
-            Return a `bool` array where entries of ``array`` match the
-            specified ``key``
-
-        __iter__
-            Iterator over ``values``
-
-        """
-        if isinstance(array, list):
-            self.array = np.array(array)
-        else:
-            self.array = array
-
-        _ = np.unique(self.array, return_counts=True, return_inverse=True)
-        self.dim = self.array.size
-        self.zeros = np.zeros(self.array.shape, dtype=bool)
-
-        self.values = [l for l in _[0]]
-        self.indices = _[1]
-        self.counts = _[2]
-
-        if verbose:
-            self.info(**kwargs)
-
-    @property
-    def N(self):
-        """
-        Number of unique ``values``
-        """
-        return len(self.values)
-
-    def info(self, sort_counts=0, **kwargs):
-        """
-        Print a summary
-
-        Parameters
-        ----------
-        sort_counts : int, optional
-            Sort the counts in ascending order if `sort_counts` is non-zero.
-            Default is 0.
-
-        """
-        print(f'{"N":>4}  {"value":10}')
-        print("====  ==========")
-        if sort_counts:
-            so = np.argsort(self.counts)[:: int(sort_counts)]
-        else:
-            so = np.arange(self.N)
-
-        for i in so:
-            v, c = self.values[i], self.counts[i]
-            print(f"{c:>4}  {v:10}")
-
-    def count(self, key):
-        """
-        Get occurrences count of a particular ``value``.
-
-        Parameters
-        ----------
-        key : object
-            The value to count occurrences of.
-
-        Returns
-        -------
-        count : int
-            The number of occurrences of the specified value.
-
-        """
-        if key in self.values:
-            ix = self.values.index(key)
-            return self.counts[ix]
-        else:
-            return 0
-    
-    
-    @property
-    def list_indices(self):
-        """
-        Build list of lists of indices that each unique value
-        """
-
-        inds = [[] for i in range(self.N)]
-        so = np.argsort(self.indices)
-
-        for i, ii in zip(so, self.indices[so]):
-            inds[ii].append(i)
-
-        # Sort the sublists
-        for i in range(self.N):
-            if self.counts[i] > 1:
-                inds[i].sort()
-
-        return inds
-    
-        
-    def unique_index(self, index=0):
-        """
-        Return array of indices of the parent array that makes
-        a unique output array
-
-        Parameters
-        ----------
-        index : int, optional
-            The index of the value to return. Default is 0.
-
-        Returns
-        -------
-        uix : list
-            List of unique indices
-
-        """
-        uix = [ind[index] for ind in self.list_indices]
-
-        return uix
-    
-
-    def __iter__(self):
-        """
-        Iterable over `values` attribute
-
-        Returns a tuple of the value and the boolean selection array for that
-        value.
-        """
-        i = 0
-        while i < self.N:
-            vi = self.values[i]
-            yield (vi, self[vi])
-            i += 1
-
-    def __getitem__(self, key):
-        if key in self.values:
-            ix = self.values.index(key)
-            test = self.indices == ix
-            return test
-        else:
-            return self.zeros
-
-    def __len__(self):
-        return self.N
 
 
 class HubbleXYZ(object):
