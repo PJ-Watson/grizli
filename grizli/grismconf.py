@@ -1440,7 +1440,7 @@ class TransformGrismconf(object):
 
 
 
-    def get_beams(self, nt=512, min_sens=1.0e-3):
+    def get_beams(self, nt=512, min_sens=1.0e-3, **kwargs):
         """
         Get beam parameters and read sensitivity curves
 
@@ -1633,7 +1633,7 @@ def load_grism_config(conf_file, warnings=True):
         conf = TransformGrismconf(conf_file)
         conf.get_beams()
     elif "CUSTOM" in conf_file:
-        conf = CustomGrismConf(conf_file)
+        conf = CustomGrismconf(conf_file)
         conf.get_beams()
     else:
         conf = aXeConf(conf_file)
@@ -2597,7 +2597,8 @@ class CustomGrismconf(TransformGrismconf):
 
         """
 
-        print(conf_file)
+        # print(conf_file)
+        self.conf_file = conf_file
 
         self.conf_readlines = open(conf_file).readlines()
 
@@ -2641,6 +2642,15 @@ class CustomGrismconf(TransformGrismconf):
         for k in self.conf_name_to_beam_name.keys():
             self.conf_name_to_obj[k] = load_grism_config(os.path.join(GRIZLI_PATH, k))
 
+        # Avoid applying this twice
+        if "F150W" in conf_file: 
+            conf_obj = self.conf_name_to_obj[
+                self.beam_name_to_conf_name[self.order_names["B"]]
+            ]
+            conf_obj.sens["B"]["SENSITIVITY"] /= 1.5
+            if "ERROR" in conf_obj.sens["B"].colnames:
+                conf_obj.sens["B"]["ERROR"] /= 1.5
+
         self.conf_dict = {}
 
     @property
@@ -2683,7 +2693,7 @@ class CustomGrismconf(TransformGrismconf):
             conf_obj = self.conf_name_to_obj[
                 self.beam_name_to_conf_name[self.order_names[beam]]
             ]
-            # print (beam, conf_obj)
+            # print (beam, self.order_names[beam],self.beam_name_to_conf_name[self.order_names[beam]], list(conf_obj.dxlam.keys()), conf_obj)
             self.dxlam[beam] = conf_obj.dxlam[beam]
             self.nx[beam] = conf_obj.nx[beam]
             self.sens[beam] = conf_obj.sens[beam]
