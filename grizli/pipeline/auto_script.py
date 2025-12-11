@@ -2856,7 +2856,10 @@ def multiband_catalog(field_root='j142724+334246', threshold=1.8, detection_back
     #segment_img = pyfits.open('{0}-ir_seg.fits'.format(field_root))[0].data
 
     fq = '{0}-{1}_dr?_sci.fits*'
-    
+    detect_cat = tab.copy()
+    detect_cat.rename_columns(
+        detect_cat.colnames, [c.lower() for c in detect_cat.colnames]
+    )
     for ii, filt in enumerate(filters):
         print(filt)
         if filt.startswith('g'):
@@ -2909,6 +2912,7 @@ def multiband_catalog(field_root='j142724+334246', threshold=1.8, detection_back
                 use_bkg_err=use_bkg_err,
                 sci=sci_image,
                 prefer_var_image=prefer_var_image,
+                detect_cat=detect_cat,
             )
 
             for k in filter_tab.meta:
@@ -2935,8 +2939,11 @@ def multiband_catalog(field_root='j142724+334246', threshold=1.8, detection_back
             )
 
             #ee_corr = prep.get_kron_tot_corr(tab, filter=filt.lower())
-            tab['{0}_tot_corr'.format(filt.upper().replace('-CLEAR',''))] = tot_corr
-            
+            try:
+                tab['{0}_tot_corr'.format(filt.upper().replace('-CLEAR','')).upper()] = tot_corr
+            except:
+                pass
+
             if clean_bkg:
                 bkg_files = glob.glob(f'{root}*{filt}*bkg.fits')
                 for bfile in bkg_files:
