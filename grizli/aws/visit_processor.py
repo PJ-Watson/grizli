@@ -2319,6 +2319,9 @@ def cutout_mosaic(rootname='gds', product='{rootname}-{f}', ra=53.1615666, dec=-
     if res is None:
         import boto3
         res = db.SQL(SQL)
+        use_local=False
+    else:
+        use_local=True
 
     if just_query:
         return res
@@ -2557,7 +2560,8 @@ def cutout_mosaic(rootname='gds', product='{rootname}-{f}', ra=53.1615666, dec=-
                 sample_factor=expmap_sample_factor,
                 keep_small=keep_expmap_small,
                 output_type='file',
-                verbose=True
+                verbose=True,
+                exp=res[fi] if use_local else None
             )
 
     if s3output:
@@ -2586,7 +2590,7 @@ def cutout_mosaic(rootname='gds', product='{rootname}-{f}', ra=53.1615666, dec=-
     return res
 
 
-def matched_exptime_map(ref_file, sample_factor=4, keep_small=True, output_type='file', verbose=True):
+def matched_exptime_map(ref_file, sample_factor=4, keep_small=True, output_type='file', verbose=True, exp=None):
     """
     Make an exposure time map by querying footprints from the exposure database
     
@@ -2611,6 +2615,12 @@ def matched_exptime_map(ref_file, sample_factor=4, keep_small=True, output_type=
         - ``hdu``: get a `~astropy.io.fits.ImageHDU` object
         
         - ``array``: return a 2D array
+
+    exp : None, `~astropy.table.Table`
+        Explicit list of exposure file metadata, e.g., from
+        `~grizli.aws.visit_processor.res_query_from_local`.  If not specified, the
+        grizli-processed exposures that overlap with the requested cutout WCS will be
+        determined by querying the `grizli` database (`~grizli.aws.db`).
     
     Returns
     -------
@@ -2642,11 +2652,12 @@ def matched_exptime_map(ref_file, sample_factor=4, keep_small=True, output_type=
                 
     wsr = utils.SRegion(wcs.calc_footprint())
 
-    exp = db.SQL(f"""SELECT dataset, footprint, exptime, filter, sciext
-    FROM exposure_files
-    WHERE filter = '{filter_key}'
-    AND polygon(footprint) && polygon('{wsr.polystr()[0]}')
-    """)
+    if exp is None:
+        exp = db.SQL(f"""SELECT dataset, footprint, exptime, filter, sciext
+        FROM exposure_files
+        WHERE filter = '{filter_key}'
+        AND polygon(footprint) && polygon('{wsr.polystr()[0]}')
+        """)
         
     NX = header['NAXIS1']
     NY = header['NAXIS2']
