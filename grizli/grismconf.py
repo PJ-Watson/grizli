@@ -2597,7 +2597,6 @@ class CustomGrismconf(TransformGrismconf):
 
         """
 
-        # print(conf_file)
         self.conf_file = conf_file
 
         self.conf_readlines = open(conf_file).readlines()
@@ -2628,14 +2627,9 @@ class CustomGrismconf(TransformGrismconf):
             k: v for k, v in self.beam_name_to_conf_name.items() if v is not None
         }
 
-        print(self.beam_name_to_conf_name)
-
         self.conf_name_to_beam_name = {}
         for k, v in self.beam_name_to_conf_name.items():
-            # for x in v:
             self.conf_name_to_beam_name.setdefault(v, []).append(k)
-
-        print(self.conf_name_to_beam_name)
 
         self.conf_name_to_obj = {}
         self.sens = {}
@@ -2665,10 +2659,8 @@ class CustomGrismconf(TransformGrismconf):
         """
         aXe beam names like 'A','B','C', etc.
         """
-        # beams = [self.beam_names[k] for k in self.orders]
         beams = []
         for k in self.orders:
-            # print (k)
             if k in self.beam_names:
                 beams.append(self.beam_names[k])
 
@@ -2693,7 +2685,6 @@ class CustomGrismconf(TransformGrismconf):
             conf_obj = self.conf_name_to_obj[
                 self.beam_name_to_conf_name[self.order_names[beam]]
             ]
-            # print (beam, self.order_names[beam],self.beam_name_to_conf_name[self.order_names[beam]], list(conf_obj.dxlam.keys()), conf_obj)
             self.dxlam[beam] = conf_obj.dxlam[beam]
             self.nx[beam] = conf_obj.nx[beam]
             self.sens[beam] = conf_obj.sens[beam]
