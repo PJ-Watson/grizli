@@ -15,6 +15,10 @@ import astropy.wcs as pywcs
 import astropy.table
 
 import numpy as np
+try:
+    from numpy import trapz as trapz
+except ImportError:
+    from numpy import trapezoid as trapz
 
 import astropy.units as u
 
@@ -2069,7 +2073,7 @@ def mod_dq_bits(value, okbits=32 + 64 + 512, badbits=0, verbose=False):
         print(f"Unset bits: {np.binary_repr(okbits)}")
         print(f"Set bits: {np.binary_repr(badbits)}")
 
-    return (value.astype(int) & ~okbits) | badbits
+    return (value - (value & okbits)) | badbits
 
 
 
@@ -3353,7 +3357,7 @@ class SpectrumTemplate(object):
             line = lmodel(wave_grid)
             line[0:2] = 0
             line[-2:] = 0
-            line /= np.trapz(line, wave_grid)
+            line /= trapz(line, wave_grid)
             peak = line.max()
         else:
             # Gaussian
@@ -3523,7 +3527,7 @@ class SpectrumTemplate(object):
         AB mag = 26.619
 
         """
-        INTEGRATOR = np.trapz
+        INTEGRATOR = trapz
 
         try:
             from .utils_numba.interp import interp_conserve_c
@@ -5005,8 +5009,9 @@ def compute_equivalent_widths(
 
         # Where line template non-zero
         mask = flux_arr[clip, :][ix, :] > 0
-        ew_i = np.trapz(
-            (line / continuum)[:, mask], wave[mask] * (1 + z * observed_frame), axis=1
+        ew_i = trapz(
+            (line / continuum)[:, mask], wave[mask] * (1 + z * observed_frame),
+            axis=1
         )
 
         EWdict[key] = np.percentile(ew_i, [16.0, 50.0, 84.0])
@@ -7028,7 +7033,7 @@ def parse_s3_url(url="s3://bucket/path/to/file.txt"):
         File name of the object, e.g. ``os.path.basename(s3_object)``
 
     """
-    surl = url.strip("s3://")
+    surl = url.split("s3://")[-1]
     spl = surl.split("/")
     if len(spl) < 2:
         print(f"bucket / path not found in {url}")
@@ -7045,6 +7050,7 @@ def fetch_s3_url(
     file_func=lambda x: os.path.join("./", x),
     skip_existing=True,
     verbose=True,
+    **kwargs,
 ):
     """
     Fetch file from an S3 bucket
@@ -7109,6 +7115,67 @@ def fetch_s3_url(
             # Download failed due to a ClientError
             # Forbidden probably means insufficient bucket access privileges
             pass
+
+    return local_file, status
+
+
+def general_fetch_file(url, path='./', makedirs=True, skip_existing=True, cache=True, verbose=True, **kwargs):
+    """
+    General utility for downloading either from s3:// or https://
+
+    Parameters
+    ----------
+    url : str
+        URL of a file to download
+    
+    path : str
+        Path of downloaded file.
+
+    skip_existing:
+        Don't re-download if the local file is found in ``path``
+
+    Returns
+    -------
+    local_file : str
+        Path to the local file
+
+    status : int
+        Download status: 0 if file not found, 1 if local_file found, 2 if
+        downloaded successfully.
+    
+    """
+    import shutil
+    from astropy.utils.data import download_file
+    from urllib.error import HTTPError
+
+    base = os.path.basename(url)
+    local_file = os.path.join(path, base)
+    if os.path.exists(local_file) & skip_existing:
+        return local_file, 1
+
+    if (not os.path.exists(path)) & makedirs:
+        os.makedirs(path)
+
+    log_comment(
+        LOGFILE,
+        f"utils.general_fetch_file: {url} > {local_file}",
+        verbose=verbose
+    )
+
+    if url.startswith("s3://"):
+        local_file, status = fetch_s3_url(
+            url,
+            file_func=lambda x: os.path.join(path, x),
+            verbose=False,
+        )
+    else:
+        try:
+            astropy_file = download_file(url, cache=cache, **kwargs)
+            shutil.copy(astropy_file, local_file)
+            status = 2
+        except HTTPError:
+            local_file = None
+            status = 0
 
     return local_file, status
 
@@ -7765,6 +7832,11 @@ def drizzle_from_visit(
 
     count = 0
 
+    # Running uniqid counter for drizzle context images.  This must be
+    # monotonically increasing across successive calls to `drizzle_array_groups`
+    # or else the same context bits will be reused.
+    uniqid_counter = 1
+
     ref_photflam = None
 
     indices = []
@@ -8036,6 +8108,8 @@ def drizzle_from_visit(
         if scale_photom:
             # Scale to a particular JWST context and update header keywords
             # like PHOTFLAM, PHOTFNU
+            if 'CRDS_CONTEXT' in os.environ:
+                context = os.environ['CRDS_CONTEXT']
             _scale_jwst_photom = jwst_crds_photom_scale(
                 flt,
                 update=True,
@@ -8276,6 +8350,7 @@ def drizzle_from_visit(
                 calc_wcsmap=calc_wcsmap,
                 verbose=verbose,
                 data=None,
+                first_uniqid=uniqid_counter,
                 with_slices=with_slices,
             )
 
@@ -8296,6 +8371,8 @@ def drizzle_from_visit(
 
             for k in keys:
                 header[k] = keys[k]
+
+            uniqid_counter += len(sci_list)
 
         else:
 
@@ -8321,12 +8398,15 @@ def drizzle_from_visit(
                 calc_wcsmap=calc_wcsmap,
                 verbose=verbose,
                 data=data,
+                first_uniqid=uniqid_counter,
                 with_slices=with_slices,
             )
 
             outsci, outwht, outvar, outctx = res[:4]
             header["EXPTIME"] += flt[0].header["EXPTIME"]
             header["NDRIZIM"] += 1
+
+            uniqid_counter += len(sci_list)
 
         count += 1
         header["FLT{0:05d}".format(count)] = file
@@ -8521,10 +8601,20 @@ def drizzle_array_groups(
     else:
         use_weights = wht_list
 
+    # Number of input arrays
+    N = len(sci_list)
+
+    # Maximum uniqid that will be passed to drizzlepac
+    uniqid_max = first_uniqid + N - 1
+
+    # Number of 32-bit drizzle context planes needed
+    Np = (uniqid_max + 31) // 32
+
     # Output arrays
     if data is not None:
         if len(data) == 3:
             outsci, outwht, outctx = data
+            outvar = None
         else:
             outsci, outwht, outctx, outvar = data
             if outvar is not None:
@@ -8537,26 +8627,45 @@ def drizzle_array_groups(
                     ' but var_list not provided'
                 )
                 log_comment(LOGFILE, msg, verbose=verbose, show_date=True)
+
+        # Add additional planes if necessary
+        if Np > 1:
+            if outctx.ndim == 2:  # Stack if 2D Array
+                outctx = np.stack([outctx] + [np.zeros_like(outctx) for _i in range(Np - 1)])
+                if outvar is not None:
+                    _varctx = np.stack([_varctx] + [np.zeros_like(_varctx) for _i in range(Np - 1)])
+            elif outctx.shape[0] < Np:  # Append if 3D Array with fewer planes
+                outctx = np.append(
+                    outctx,
+                    [np.zeros_like(outctx[0]) for _ in range(Np - outctx.shape[0])],
+                    axis=0,
+                )
+                if outvar is not None:
+                    _varctx = np.append(
+                        _varctx,
+                        [np.zeros_like(_varctx[0]) for _ in range(Np - _varctx.shape[0])],
+                        axis=0,
+                    )
     else:
         outsci = np.zeros(shape, dtype=np.float32)
         outwht = np.zeros(shape, dtype=np.float32)
-        outctx = np.zeros(shape, dtype=np.int32)
+
+        if Np == 1:
+            outctx = np.zeros(shape, dtype=np.int32)
+        else:
+            outctx = np.zeros((Np,) + shape, dtype=np.int32)
+
         if var_list is None:
             outvar = None
         else:
             outvar = np.zeros(shape, dtype=np.float32)
             _varwht = np.zeros(shape, dtype=np.float32)
-            _varctx = np.zeros(shape, dtype=np.int32)
+            if Np == 1:
+                _varctx = np.zeros(shape, dtype=np.int32)
+            else:
+                _varctx = np.zeros((Np,) + shape, dtype=np.int32)
 
     needs_var = (outvar is not None) & (var_list is not None)
-
-    # Number of input arrays
-    N = len(sci_list)
-
-    # Drizzlepac cannot support >31 input images
-    if first_uniqid + N > 31 and verbose:
-        msg = "Warning: Too many input images for context map, will wrap around"
-        log_comment(LOGFILE, msg, verbose=verbose, show_date=True)
 
     with_slices &= calc_wcsmap == 0
 
@@ -8598,12 +8707,18 @@ def drizzle_array_groups(
 
             osci = outsci[sly, slx] * 1
             owht = outwht[sly, slx] * 1
-            octx = outctx[sly, slx] * 1
+            if outctx.ndim == 2:
+                octx = outctx[sly, slx] * 1
+            else:
+                octx = outctx[:, sly, slx] * 1
 
             if outvar is not None:
                 ovar = outvar[sly, slx] * 1
                 ovarw = _varwht[sly, slx] * 1
-                ovarc = _varctx[sly, slx] * 1
+                if _varctx.ndim == 2:
+                    ovarc = _varctx[sly, slx] * 1
+                else:
+                    ovarc = _varctx[:, sly, slx] * 1
 
         else:
             outputwcs_i = outputwcs
@@ -8634,7 +8749,7 @@ def drizzle_array_groups(
             "cps",
             1,
             wcslin_pscale=wcs_list[i].pscale,
-            uniqid=((first_uniqid - 1 + i) % 32) + 1,
+            uniqid=first_uniqid + i,
             pixfrac=pixfrac,
             kernel=kernel,
             fillval="0",
@@ -8654,7 +8769,7 @@ def drizzle_array_groups(
                 "cps",
                 1,
                 wcslin_pscale=wcs_list[i].pscale,
-                uniqid=1,
+                uniqid=first_uniqid + i,
                 pixfrac=pixfrac,
                 kernel=kernel,
                 fillval="0",
@@ -8665,12 +8780,18 @@ def drizzle_array_groups(
             # Put slice back in full image
             outsci[sly, slx] = osci
             outwht[sly, slx] = owht
-            outctx[sly, slx] = octx
+            if outctx.ndim == 2:
+                outctx[sly, slx] = octx
+            else:
+                outctx[:, sly, slx] = octx
 
             if outvar is not None:
                 outvar[sly, slx]  =  ovar
                 _varwht[sly, slx] =  ovarw
-                _varctx[sly, slx] =  ovarc
+                if _varctx.ndim == 2:
+                    _varctx[sly, slx] =  ovarc
+                else:
+                    _varctx[:, sly, slx] =  ovarc
 
         #     print(f"yyy owht {np.nanmax(owht[owht > 0])}  {(owht > 0).sum()}")
         #

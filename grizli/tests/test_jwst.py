@@ -84,9 +84,11 @@ class TestJWSTHeaders:
             assert(im['SCI'].header['SIPDEMAD'] < 1.e-2)
             
         # Parse visits
-        visits, groups, info = auto_script.parse_visits(field_root='jwst', 
-                                                        RAW_PATH=file_path, 
-                                                        visit_split_shift=1.2)
+        visits, groups, info = auto_script.parse_visits(
+            field_root='jwst',
+            RAW_PATH=file_path,
+            visit_split_shift=1.2
+        )
         
         assert(os.path.exists('jwst_visits.yaml'))
         
@@ -126,6 +128,64 @@ class TestJWSTHeaders:
                                                  context=context,
                                                  update=True,
                                                  verbose=True)
+
+class TestExtraReferences:
+
+    def test_wisp_references(self):
+        """
+        Test find/download wisp reference files
+        """
+        keys = {
+            'INSTRUME': 'NIRCAM',
+            'FILTER': 'F150W',
+            'PUPIL': 'CLEAR',
+            'DETECTOR': 'NRCB4'
+        }
+        header = pyfits.Header(keys)
+
+        for wisp_path in [
+            os.path.join(GRIZLI_PATH, "CONF", "NircamWisp"),
+            # "/tmp/"
+        ]:
+        
+            _ = prep.get_nircam_wisp_filename(
+                header,
+                prefer_stsci_file=True,
+                path=wisp_path,
+                verbose=True,
+                download=True,
+            )
+
+            wisp_file, _filt, _inst, _det, _msg = _
+
+    def test_skyflat_references(self):
+        """
+        Test find/download wisp reference files
+        """
+        keys = {
+            'INSTRUME': 'NIRCAM',
+            'FILTER': 'F150W',
+            'PUPIL': 'CLEAR',
+            'DETECTOR': 'NRCB4'
+        }
+        header = pyfits.Header(keys)
+
+        for skyflat_path in [
+            "/tmp/",
+            None,
+        ]:
+        
+            _ = jwst_utils.get_jwst_skyflat(
+                header,
+                verbose=True,
+                valid_flat=(0.7, 1.4),
+                conf_path=skyflat_path,
+                download=True,
+            )
+
+            skyfile, flat_corr, dq = _
+            assert "nrcb4-f150w-clear_skyflat.fits" in skyfile
+            assert np.allclose(np.unique(dq), np.array([0, 1024]))
 
 
 class TestJWSTUtils:

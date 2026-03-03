@@ -1528,7 +1528,7 @@ class GroupFLT:
                     pixfrac=pixfrac,
                 )
 
-                outsci, _, _, header, outputwcs = out
+                outsci, _, _, _, header, outputwcs = out
                 header["FILTER"] = g
                 header["PA"] = pa
                 pyfits.writeto(
