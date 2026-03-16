@@ -126,6 +126,9 @@ def fresh_flt_file(
     oneoverf_kwargs={},
     use_skyflats=True,
     do_pure_parallel_wcs=True,
+    clean_nan=True,
+    dq_nan=(1 + 1024),
+    **kwargs,
 ):
     """
     Copy "fresh" unmodified version of a data file from some central location
@@ -172,6 +175,12 @@ def fresh_flt_file(
     do_pure_parallel_wcs : bool
         Update the WCS for JWST pure-parallel exposures from the FGS logs to fix
         a MAST bug.
+
+    clean_nan : bool
+        Set NaN pixels in the SCI extensions to zero and update the DQ arrays
+
+    dq_nan : int
+        DQ value to OR into the DQ extension
 
     Returns
     -------
@@ -430,6 +439,29 @@ def fresh_flt_file(
 
         c1m.flush()
 
+    # Set NaN pixels
+    if clean_nan:
+        for ext in [1,2,3,4]:
+            if ('SCI',ext) not in orig_file:
+                break
+
+            fix = ~np.isfinite(orig_file['SCI',ext].data)
+            if ('ERR',ext) in orig_file:
+                fix |= ~np.isfinite(orig_file['ERR',ext].data)
+
+            nfix = fix.sum()
+
+            if nfix > 0:
+                msg = (
+                    f"Fix {nfix} NaN pixels in extension {ext}, set DQ={dq_nan}"
+                )
+                utils.log_comment(utils.LOGFILE, msg, verbose=True)
+                orig_file['SCI', ext].data[fix] = 0.0
+                if ('ERR',ext) in orig_file:
+                    orig_file['ERR', ext].data[fix] = 1.e5
+
+                orig_file['DQ', ext].data[fix] |= dq_nan
+
     orig_file.writeto(local_file, overwrite=True)
 
     if mask_regions:
@@ -544,7 +576,7 @@ def apply_persistence_mask(
     flt[0].header["PERSGROW"] = (grow_mask, "Perristence mask dilation grow_mask")
 
     if reset:
-        flt["DQ"].data -= flt["DQ"].data & dq_value
+        flt["DQ"].data -= flt["DQ"].data.astype(np.int32) & dq_value
 
     if NPERS > 0:
         flt["DQ"].data[pers_mask > 0] |= dq_value
@@ -1904,13 +1936,13 @@ def make_SEP_catalog_from_arrays(
 
     if sci.dtype != np.float32:
         # sci_data = sci.byteswap().newbyteorder()
-        sci_data = sci.view(sci.dtype.newbyteorder()).byteswap()
+        sci_data = sci.astype(np.float32)
     else:
         sci_data = sci
 
     if err.dtype != np.float32:
         # err_data = err.byteswap().newbyteorder()
-        err_data = err.view(err.dtype.newbyteorder()).byteswap()
+        err_data = err.astype(np.float32)
     else:
         err_data = err
 
@@ -2304,7 +2336,7 @@ def make_SEP_catalog(
 
     drz_im = pyfits.open(drz_file)
     # data = drz_im[0].data.byteswap().newbyteorder()
-    data = drz_im[0].data.view(drz_im[0].data.dtype.newbyteorder()).byteswap()
+    data = drz_im[0].data.astype(np.float32)
 
     logstr = f"make_SEP_catalog: {drz_file} weight={weight_file} ({WEIGHT_TYPE})"
     utils.log_comment(utils.LOGFILE, logstr, verbose=verbose, show_date=True)
@@ -2342,7 +2374,7 @@ def make_SEP_catalog(
     if (weight_file is not None) & need_err:
         wht_im = pyfits.open(weight_file)
         # wht_data = wht_im[0].data.byteswap().newbyteorder()
-        wht_data = wht_im[0].data.view(wht_im[0].data.dtype.newbyteorder()).byteswap()
+        wht_data = wht_im[0].data.astype(np.float32)
 
         if WEIGHT_TYPE == "VARIANCE":
             err_data = np.sqrt(wht_data)
@@ -2990,7 +3022,8 @@ def compute_SEP_auto_params(
     segb = segmap
     if segmap is not None:
         if segmap.dtype == np.dtype(">i4"):
-            segb = segmap.view(segmap.dtype.newbyteorder("="))            
+            # segb = segmap.byteswap().newbyteorder()
+            segb = segmap.astype(np.int32)
 
     if "a_image" in tab.colnames:
         x, y = tab["x_image"] - 1, tab["y_image"] - 1

@@ -4775,7 +4775,8 @@ def flag_nirspec_hot_pixels(
 
     bits = get_jwst_dq_bit(jwst_dq_flags)
 
-    mask = (rate["DQ"].data & bits > 0) | (rate["ERR"].data <= 0)
+    mask = (rate["DQ"].data.astype(np.int32) & bits > 0)
+    mask |= (rate["ERR"].data <= 0)
     mask |= (rate["SCI"].data < -3 * rate["ERR"].data) | (
         ~np.isfinite(rate["SCI"].data)
     )
@@ -4933,7 +4934,8 @@ def flag_nircam_hot_pixels(
 
     bits = get_jwst_dq_bit(jwst_dq_flags)
 
-    mask = (rate["DQ"].data & bits > 0) | (rate["ERR"].data <= 0)
+    mask = (rate["DQ"].data.astype(np.int32) & bits > 0)
+    mask |= (rate["ERR"].data <= 0)
     mask |= (rate["SCI"].data < -3 * rate["ERR"].data) | (
         ~np.isfinite(rate["SCI"].data)
     )
@@ -4985,7 +4987,7 @@ def flag_nircam_hot_pixels(
     else:
         plusses = (dplus > plus_sn_min) & (dcorner < corner_sn_max)
 
-    plusses &= (rate["DQ"].data & bits > 0) | hot
+    plusses &= (rate["DQ"].data.astype(np.int32) & bits > 0) | hot
 
     plus_mask = nd.binary_dilation(plusses, structure=PLUS_FOOTPRINT)
 
