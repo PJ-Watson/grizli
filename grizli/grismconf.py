@@ -1723,7 +1723,7 @@ class TransformGrismconf(object):
             self.sens["A"] = _tab
 
 
-def load_grism_config(conf_file, warnings=True, **kwargs):
+def load_grism_config(conf_file, warnings=False, **kwargs):
     """
     Load parameters from an aXe configuration file
 
